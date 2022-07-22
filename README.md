@@ -6,7 +6,7 @@ This repo is under development, but will be updated with more teaching materials
 
 # The "plan"
 
-## All mealtimes
+## All mealtimes and breaks
 
 - Introduce yourselves to us! Tell us about your data! Ask us your questions!
 
