@@ -2,7 +2,9 @@
 ## prepared by Amy Willis & Sarah Teichman
 
 # In this lab, we'll practice running linear regression with the function `lm`. 
-# We'll also manipulate our data with the `tidyverse` plot our data with `ggplot`. 
+# We'll also manipulate our data with the `tidyverse` plot our data with `ggplot`.
+# There will be a few intentional errors here for you to fix. If a line of coding
+# isn't working, think about how you can fix it to make it work. 
 
 # Let's begin by loading in all the packages we'll need for this tutorial.
 
@@ -21,9 +23,9 @@ meta <- read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/S
 
 # ------------------------ exploring the data ---------------------
 
-# We can take a look at the beginning of each dataset with the command head
+# We can take a look at the beginning of each dataset with the function head
 
-head(ddpcr)
+head(dpcr)
 head(meta)
 
 # We'd like to combine these two data sets together. They both contain the variable 
@@ -68,7 +70,37 @@ names(both)
 
 # We'll use ggplot for plotting. Remember that in ggplot we start with the base
 # of our plot, where we specify our dataset and variables, and then we can build
-# up our plot by adding layers with the `+` operator. 
+# up our plot by adding layers with the `+` operator. We'll build this first plot
+# step by step.
+
+ggplot(data = both, aes(x = `Sample Type`, y = ddpcr, col = `Subject ID`))
+
+# This sets up our axis labels. We are now ready to add a plotting layer. 
+
+ggplot(data = both, aes(x = `Sample Type`, y = ddpcr, col = `Subject ID`)) +
+  geom_jitter(height = 0, width = 0.3)
+
+# geom_jitter is a great way to make a scatterplot with a categorical variable on 
+# the x-axis. It spreads the points out so that they do not all line up exactly 
+# for the same values of the x variable.
+
+ggplot(data = both, aes(x = `Sample Type`, y = ddpcr, col = `Subject ID`)) +
+  geom_jitter(height = 0, width = 0.3) + 
+  labs(y = "Average observed ddPCR\n(copies/ul)",
+       title = "Digital PCR by Sample Type")
+
+# We like to add informative labels with the `labs` layer to improve on our variable
+# names. 
+
+ggplot(data = both, aes(x = `Sample Type`, y = ddpcr, col = `Subject ID`)) +
+  geom_jitter(height = 0, width = 0.3) + 
+  labs(y = "Average observed ddPCR\n(copies/ul)",
+       title = "Digital PCR by Sample Type") + 
+  scale_y_log10()
+
+# The ddpcr data is skewed, with a few larger outliers taking up a lot of space on
+# our plot. We can transform ddpcr to the log of ddpcr to visualize this in a 
+# different way. 
 
 ggplot(data = both, aes(x = `Sample Type`, y = ddpcr, col = `Subject ID`)) +
   geom_jitter(height = 0, width = 0.3) + 
@@ -77,18 +109,20 @@ ggplot(data = both, aes(x = `Sample Type`, y = ddpcr, col = `Subject ID`)) +
   scale_y_log10() + 
   theme(plot.title = element_text(hjust = 0.5))
 
-# What do we learn from this? 
+# ggplot by default left-justifies titles. The theme layer centers the title. 
+
+# What do we learn from this plot? 
 # It seems that there are sputum samples generally have higher pcr values
 # than saliva samples. 
 
-ggplot(data = both, aes(x = `Treatment Group`, y = ddpcr, col = `Subject ID`)) +
-  geom_jitter(height = 0, width = 0.3) + 
+ggplot(data = both, aes(x = `Treatment Group`, y = ddpcr, col = `Subject ID`)) 
+  geom_jitter(height = 0, width = 0.3) +
   labs(y = "Average observed ddPCR\n(copies/ul)",
        title = "Digital PCR by Treatment") + 
   scale_y_log10() + 
   theme(plot.title = element_text(hjust = 0.5))
 
-# What do we learn from this? 
+# What do we learn from this plot? 
 # There are a lot more non-treated samples than treated samples. The general trend
 # seems to be higher pcr values from non-treated samples than treated samples.
 
@@ -97,7 +131,7 @@ ggplot(data = both, aes(x = as.numeric(FEV1), y = ddpcr, col = `Subject ID`)) +
   labs(x = "FEV Value",
        y = "Average observed ddPCR\n(copies/ul)",
        title = "Digital PCR by FEV Value") + 
-  scale_y_log10()
+  scale_y_log10() +
   theme(plot.title = element_text(hjust = 0.5))
 
 # What do we learn from this? 
@@ -159,7 +193,7 @@ summary(mod_type)
 # Now, let's fit a model with multiple covariates. Let's consider Treatment and 
 # Sample Type. 
 
-mod_treat_type <- lm(ddpcr ~ `Sample Type` + `Treatment Group`, data = both)
+mod_treat_type <- lm(ddpcr ~ Sample Type + Treatment Group, data = both)
 
 # We can again use `summary` to check out the results. 
 
@@ -174,7 +208,7 @@ summary(mod_treat_type)
 
 # We can fit an interaction model by replacing the `+` above with `*`. 
 
-mod_interact <- lm(ddpcr ~ `Sample Type` * `Treatment Group`, data = both)
+mod_interact <- lm(both, ddpcr ~ `Sample Type` * `Treatment Group`)
 summary(mod_interact)
 
 # Now we have an extra row. Not only do we have rows for `Sample Type`Sputum and 
