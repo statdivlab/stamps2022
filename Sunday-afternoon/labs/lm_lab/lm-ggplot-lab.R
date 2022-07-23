@@ -33,6 +33,7 @@ head(meta)
 # pipe lets us chain commands together, using the output of the previous command as
 # the input to the next command. 
 
+
 both <- meta %>% 
   inner_join(ddpcr, by = "sample_name") 
 
@@ -49,7 +50,6 @@ both <- both %>%
 
 # Earlier we looked at the first few observations of each dataset. To see a full list
 # of variables in our dataset, we can use the `names()` function.
-
 names(both)
 
 # We'll be focusing on a few variables from this dataset: ddpcr, FEV1, Treatment 
@@ -74,27 +74,30 @@ ggplot(data = both, aes(x = `Sample Type`, y = ddpcr, col = `Subject ID`)) +
   geom_jitter(height = 0, width = 0.3) + 
   labs(y = "Average observed ddPCR\n(copies/ul)",
        title = "Digital PCR by Sample Type") + 
+  scale_y_log10() + 
   theme(plot.title = element_text(hjust = 0.5))
 
 # What do we learn from this? 
-# It seems that there are some sputum samples with higher digital PCR values than
-# most of the saliva samples. 
+# It seems that there are sputum samples generally have higher pcr values
+# than saliva samples. 
 
 ggplot(data = both, aes(x = `Treatment`, y = ddpcr, col = `Subject ID`)) +
   geom_jitter(height = 0, width = 0.3) + 
   labs(y = "Average observed ddPCR\n(copies/ul)",
        title = "Digital PCR by Treatment") + 
+  scale_y_log10() + 
   theme(plot.title = element_text(hjust = 0.5))
 
 # What do we learn from this? 
-# It seems that there are some non-treatment samples with higher PCR values than
-# most of the treatment samples 
+# There are a lot more non-treated samples than treated samples. The general trend
+# seems to be higher pcr values from non-treated samples than treated samples.
 
 ggplot(data = both, aes(x = as.numeric(FEV1), y = ddpcr, col = `Subject ID`)) +
   geom_point() + 
   labs(x = "FEV Value",
        y = "Average observed ddPCR\n(copies/ul)",
        title = "Digital PCR by FEV Value") + 
+  scale_y_log10()
   theme(plot.title = element_text(hjust = 0.5))
 
 # What do we learn from this? 
@@ -110,6 +113,10 @@ ggplot(data = both, aes(x = as.numeric(FEV1), y = ddpcr, col = `Subject ID`)) +
 
 # Now, let's look at the association between digital PCR measurements and whether
 # the sample is from saliva or sputum. We'll use the lm command. 
+  
+# Note that we are deciding to model our outcome on the linear scale. Some people
+# might model this variable on the log scale. Both options are valid, as long as 
+# you interpret the coefficients in terms on the scale of the outcome. 
 
 mod_type <- lm(ddpcr ~ `Sample Type`, data = both)
 
@@ -157,3 +164,4 @@ mod_fev_type_int <- lm(ddpcr ~ FEV1*`Sample Type`, data = both)
 
 mod1 <- lm(ddpcr ~ `Treatment Group` + `Sample Type`, data = both)
 mod2 <- lm(ddpcr ~ `Treatment Group`*`Sample Type`, data = both)
+
