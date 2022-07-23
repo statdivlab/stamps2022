@@ -192,8 +192,8 @@ bt$table
 # more important to come up with the standard error, and use that standard error in
 # testing using `betta()`.
 
-# Shockingly, until recently, there were no tools to estimate Shannon diversity in
-# the presence of an ecological/microbial network! `DivNet` is a new tool that
+# Shockingly, until quite recently, there were no tools to estimate Shannon diversity in
+# the presence of an ecological/microbial network! `DivNet` is a tool that
 # allows you to estimate this. It also adjusts for different sequencing depths so
 # you don't have to throw away any data (you still don't need to rarefy)!
 
