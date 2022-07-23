@@ -156,14 +156,15 @@ plot(corncob_da, color = "DayAmdmt")
 
 # Let's use a likelihood ratio test to select our final model for this taxon. We 
 # want to test the null hypothesis that the likelihood of the model with covariates
-# is equal to the likelihood of the model without covariates. To do this test, we 
-# use:
+# is equal to the likelihood of the model without covariates. If a model has a higher
+# likelihood, this means it fits the data better. To do this test, we use:
 
 lrtest(mod_null = corncob, mod = corncob_da)
 
 # We obtain a p-value much smaller than a cut-off of 0.05. Therefore we conclude 
 # that there is a statistically significant difference in the likelihood of the two 
-# models. Thus, we probably want to use the model with covariates for this taxon.
+# models. Thus, we probably want to use the model with covariates for this taxon, 
+# since it fits our data signficantly better than the intercept-only model.
 
 # ------------------ Parameter Interpretation ----------------------------------
 
