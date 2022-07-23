@@ -97,7 +97,7 @@ tax_table(soil)[1:5, ]
 # Note that collapsing the samples is not necessary, and this model can work at any 
 # taxonomic rank. However, we will later be fitting a model to every taxa. We can 
 # see that by agglomerating taxa to the phylum level, we have gone from from 7770 to
-# 40 taxa. Thus we collapse in order to increase the speed for the purposes of this 
+# 40 taxa. Here we collapse *only* in order to decrease the runtime for the purposes of this 
 # tutorial.
 
 # Now we fit our model. We will demonstrate with Proteobacteria, or OTU.1. 
@@ -105,7 +105,7 @@ tax_table(soil)[1:5, ]
 # For now, we will not include any covariates, so we use `~ 1` as our model formula 
 # responses. This builds a model with only an intercept. 
 
-corncob <- bbdml(formula = OTU.1 ~ 1,
+corncob1 <- bbdml(formula = OTU.1 ~ 1,
                  phi.formula = ~ 1,
                  data = soil)
 
@@ -119,15 +119,16 @@ corncob <- bbdml(formula = OTU.1 ~ 1,
 # First, let's plot the data with our model fit on the relative abundance scale. 
 # To do this, we simply type:
 
-plot(corncob)
+plot(corncob1)
 
 # The points represent the relative abundances. The bars represent the 95% 
 # prediction intervals for the observed relative abundance by sample. 
+# Computing these intervals might take ~10 seconds. 
 
 # Next, let's color the plot by the `DayAmdmt` covariate. To do this, we add the 
 # option `color = "DayAmdmt"` to our plotting code. 
 
-plot(corncob, color = "DayAmdmt")
+plot(corncob1, color = "DayAmdmt")
 
 # Notice that this plot also reorders our samples so that groups appear together so 
 # that they are easier to compare.
@@ -143,55 +144,42 @@ plot(corncob, color = "DayAmdmt")
 # absolute abundance with `DayAmdmt` as a covariate. We do this by modifying 
 # `formula` and `phi.formula` as:
 
-corncob_da <- bbdml(formula = OTU.1 ~ DayAmdmt,
+corncob1_da <- bbdml(formula = OTU.1 ~ DayAmdmt,
                     phi.formula = ~ DayAmdmt,
                     data = soil)
 
 # Let's also plot this data on the relative abundance scale. 
 
-plot(corncob_da, color = "DayAmdmt")
+plot(corncob1_da, color = "DayAmdmt")
 
 # Visually, the model with covariates seems to provide a much better fit to the 
-# data, but how can we compare the two models statistically?
-
-# Let's use a likelihood ratio test to select our final model for this taxon. We 
-# want to test the null hypothesis that the likelihood of the model with covariates
-# is equal to the likelihood of the model without covariates. If a model has a higher
-# likelihood, this means it fits the data better. To do this test, we use:
-
-lrtest(mod_null = corncob, mod = corncob_da)
-
-# We obtain a p-value much smaller than a cut-off of 0.05. Therefore we conclude 
-# that there is a statistically significant difference in the likelihood of the two 
-# models. Thus, we probably want to use the model with covariates for this taxon, 
-# since it fits our data signficantly better than the intercept-only model.
+# data. 
 
 # ------------------ Parameter Interpretation ----------------------------------
 
-# Now that we have chosen our model, let's interpret our model output. To see a 
+# Now that we have discussed how to fit our model, let's interpret our model output. To see a 
 # summary of the model, type:
 
-summary(corncob_da)
+summary(corncob1_da)
 
 # This output will look familiar from the `lm`. Covariates associated with the 
 # expected relative abundance are presented separately from covariates associated 
 # with the variance of the absolute abundances are preceded by.
 
 # From this model summary, we can see that the `DayAmdmt21` abundance coefficient is
-# negative and statistically significant. This suggests that this taxon is 
-# differentially-abundant across `DayAmdmt`, and that samples with `DayAmdmt = 21` 
-# are expected to have a lower relative abundance. This matches what we saw from the
-# observed abundances.
+# negative and statistically significant. We estimate that this taxon has 
+# a lower relative abundance for `DayAmdmt`=21 compared to `DayAmdmt`=11 -- which isn't
+# surprising given what we saw in the observed relative abundances.
 
 # We can also see that the `DayAmdmt21` dispersion coefficient is negative and 
-# statistically significant. This suggests that this taxon is differentially-
-# variable across `DayAmdmt`, and that samples with `DayAmdmt = 21` are expected to
-# have a lower variability. This matches what we saw from the observed abundances.
+# statistically significant. This suggests that this taxon has a different dispersion
+# across `DayAmdmt`, and that samples with `DayAmdmt = 21` are expected to
+# have a lower variability. This also matches what we saw from the observed abundances.
 
 # ------------------- Analysis for Multiple Taxa --------------------------------
 
 # What if we want to test all the taxa in our data to see if they are differentially-
-# abundant or differentially-variable? We use the `differentialTest` function. It 
+# relative abundant or differentially-dispersed? We use the `differentialTest` function. It 
 # will perform the above tests on all taxa, and it will control the false discovery
 # rate to account for multiple comparisons.
 
@@ -229,8 +217,8 @@ da_analysis
 
 da_analysis$significant_taxa
 
-# In this case, we identified 14 taxa that are differentially-abundant across 
-# `DayAmdmt` (out of the 39 taxa tested).
+# In this case, we identified 14 taxa that are differentially-abundant at a 5% FDR level 
+# across `DayAmdmt` (out of the 39 taxa tested).
 
 # We can see a list of differentially-variable taxa using: 
 
@@ -265,13 +253,15 @@ da_analysis$p[1:5]
 da_analysis$p_fdr[1:5]
 
 # where the values are now adjusted to control the false discovery rate at 0.05.
+# These are q-values! (You can call them adjusted p-values, but we prefer to
+# call them q-values since it's less ambiguous.)
 
 # We can also plot the model coefficients of our results:
 
 plot(da_analysis)
 
-# Here, we can see that for Bacteria_Armatimonadetes, the effect of DayAmdmt21 is 
-# positive compared to the baseline (in this case, DayAmdmt11).
+# Here, we can see that the relative abundance of Bacteria_Armatimonadetes
+# is estimated to be greater for DayAmdmt=21 compared to baseline (in this case, DayAmdmt11).
 
 # Finally, we can see a list of any taxa for which we were not able to fit a model
 # using:
