@@ -11,8 +11,8 @@ library(lme4)
 
 # ------------------------ loading the data -----------------------
 
-# Next, let's load our data. We'll start with two datasets. This data comes from
-# a study of Cystic Fibrosis. It consists of sputum and saliva samples frpm ten
+# Next, let's load our data. We'll start with two data sets. This data comes from
+# a study of Cystic Fibrosis. It consists of sputum and saliva samples from ten
 # people with Cystic Fibrosis. More information can be found here: 
 # https://journals.asm.org/doi/full/10.1128/mSystems.00296-20?rfr_dat=cr_pub++0pubmed&url_ver=Z39.88-2003&rfr_id=ori%3Arid%3Acrossref.org&
 
@@ -33,7 +33,6 @@ head(meta)
 # pipe lets us chain commands together, using the output of the previous command as
 # the input to the next command. 
 
-
 both <- meta %>% 
   inner_join(ddpcr, by = "sample_name") 
 
@@ -50,6 +49,7 @@ both <- both %>%
 
 # Earlier we looked at the first few observations of each dataset. To see a full list
 # of variables in our dataset, we can use the `names()` function.
+
 names(both)
 
 # We'll be focusing on a few variables from this dataset: ddpcr, FEV1, Treatment 
@@ -58,8 +58,8 @@ names(both)
 # ddprc: digital PCR, the total bacterial load in the sample
 # FEV1: Forced expiratory volume (FEV) measures how much air a person can exhale 
 # during a forced breath
-# Treatment: 1 if the sample comes from a participant in the treatment group, 2 if
-# the sample comes from a participant in the control group 
+# Treatment Group: "ON" if the sample is from a subject treated with antibiotics, 
+# "OFF" otherwise 
 # Sample Type: the location of the sample, either Saliva or Sputum
 # Subject ID: an ID identifying the participant 
 
@@ -81,7 +81,7 @@ ggplot(data = both, aes(x = `Sample Type`, y = ddpcr, col = `Subject ID`)) +
 # It seems that there are sputum samples generally have higher pcr values
 # than saliva samples. 
 
-ggplot(data = both, aes(x = `Treatment`, y = ddpcr, col = `Subject ID`)) +
+ggplot(data = both, aes(x = `Treatment Group`, y = ddpcr, col = `Subject ID`)) +
   geom_jitter(height = 0, width = 0.3) + 
   labs(y = "Average observed ddPCR\n(copies/ul)",
        title = "Digital PCR by Treatment") + 
@@ -115,8 +115,8 @@ ggplot(data = both, aes(x = as.numeric(FEV1), y = ddpcr, col = `Subject ID`)) +
 # the sample is from saliva or sputum. We'll use the lm command. 
   
 # Note that we are deciding to model our outcome on the linear scale. Some people
-# might model this variable on the log scale. Both options are valid, as long as 
-# you interpret the coefficients in terms on the scale of the outcome. 
+# might model the log of this variable. Both options are valid, as long as 
+# you interpret the coefficients in terms any transformations you've done.
 
 mod_type <- lm(ddpcr ~ `Sample Type`, data = both)
 
@@ -149,19 +149,45 @@ summary(mod_type)
 # What does the second row of the output tell us? 
 
 # Our estimate of 1,006,955 for the coefficient for `Sample Type`Sputum tells us 
-# that for two samples that are identical except for the sample type, we expect that
-# the average observed ddPCR will be 1,000,955 units higher for a sample from sputum
-# than a sample from saliva. 
+# that the estimated mean observed ddPCR for a sample of sputum is 1,000,955 
+# units higher than the estimated mean obseved ddPCR for a sample from saliva. 
 
 # We have a p-value of 0.01355. If we use a alpha level of 0.05, this gives us enough
 # evidence to reject the null hypothesis of no relationship between ddpcr and sample
 # type. 
 
-mod_fev <- lm(ddpcr ~ FEV1, data = both)
+# Now, let's fit a model with multiple covariates. Let's consider Treatment and 
+# Sample Type. 
 
-mod_fev_type <- lm(ddpcr ~ FEV1 + `Sample Type`, data = both)
-mod_fev_type_int <- lm(ddpcr ~ FEV1*`Sample Type`, data = both)
+mod_treat_type <- lm(ddpcr ~ `Sample Type` + `Treatment Group`, data = both)
 
-mod1 <- lm(ddpcr ~ `Treatment Group` + `Sample Type`, data = both)
-mod2 <- lm(ddpcr ~ `Treatment Group`*`Sample Type`, data = both)
+# We can again use `summary` to check out the results. 
 
+summary(mod_treat_type)
+
+# How would you interpret these results? 
+# Here, we have a significant relationship between Sample Type and ddpcr, but not
+# Treatment and ddpcr. 
+
+# What if we think there is an interaction between the effects of Treatment and 
+# Sample Type on ddpcr? 
+
+# We can fit an interaction model by replacing the `+` above with `*`. 
+
+mod_interact <- lm(ddpcr ~ `Sample Type` * `Treatment Group`, data = both)
+summary(mod_interact)
+
+# Now we have an extra row. Not only do we have rows for `Sample Type`Sputum and 
+# Treatment, but we also have an interaction row. The estimate for the interaction
+# can be interpreted as the following: 
+
+# -409,238 is the estimated difference in mean bacterial concentration in sputum for
+# people on antibiotics compared to people not on antibiotics minus the estimated 
+# difference in mean bacterial concentration in saliva for people on antibiotics 
+# compared to people not on antibiotics.
+
+# Note that our estimates and standard errors for `Sample Type`Sputum and 
+# `Treatment Group`ON are different for our two models. This is because whenever we
+# change something (add a covariate, add an interaction, etc) we are fitting a 
+# different model. There are methods available to help choose between models, but
+# ONE TAKEAWAY - ONLY ADD VARIABLES THAT YOU CARE ABOUT? SOMETHING ELSE?
