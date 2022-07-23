@@ -1,34 +1,33 @@
 # Corncob lab 
-# By Bryan Martin 
+## prepared by Bryan Martin, Sarah Teichman & Amy Willis 
 
 # --------------------- Vignette Information ----------------
 
 # We thank Dr. Thea Whitman for kindly providing us with the example data set we use 
-# for this vignette. You can read more about this data in Whitman, Thea, et al. 
+# for this vignette. You can read more about this data in Whitman, et al. 
 # "Dynamics of microbial community composition and soil organic carbon mineralization
 # in soil following addition of pyrogenic and fresh organic matter." 
-# <i> The ISME Journal </i> 10.12 (2016): 2918.
+# The ISME Journal 10.12 (2016): 2918.
 
 # We also use IBD microbiome data from Papa, Eliseo, et al. "Non-Invasive Mapping of 
 # the Gastrointestinal Microbiota Identifies Children with Inflammatory Bowel 
-# Disease." <i> PLoS One </i> 7(6), e39242. The data are made available by Duvallet, 
+# Disease." PLoS One 7(6), e39242. The data are made available by Duvallet, 
 # Claire, et al. (2017). "MicrobiomeHD: the human gut microbiome in health and disease"
 # [Data set]. Zenodo. We thank the authors for making their data open source and 
 # easily accessible.
 
 # --------------------- Introduction -------------------------
 
-# Effectively modeling microbial relative abundance poses a number of statistical 
-# challenges, including:
+# Modeling microbial relative abundance is challenging for reasons such as
   
-#  - different sequencing depth,
-#  - excessive zeros from unobserved taxa,
-#  - high variability of empirical relative abundances (overdispersion),
-#  - within-taxon correlation,
-#  - hypothesis testing with categorical and continuous covariates.
+#  - different sequencing depth across samples,
+#  - lots of taxa unobserved in many samples,
+#  - high variability in empirical relative abundances (overdispersion),
+#  - within-taxon correlation (community dynamics),
+#  - multiple categorical and continuous covariates to account for in a model.
 
-# Here, we introduce `corncob`, an individual taxon regression model that uses 
-# abundance tables and sample data. `corncob` is able to model differential 
+# Here, we introduce `corncob`, a microbiome relative abundance model. 
+# `corncob` is able to model differential 
 # abundance and differential variability, and addresses each of the challenges 
 # presented above.
 
@@ -38,7 +37,8 @@
 
 # On the cloud we already have `corncob` installed. 
 # If you're working on your own version of RStudio, install `corncob` using:
-# devtools::install_github("bryandmartin/corncob")
+# install.packages("corncob") for the stable version
+#  or devtools::install_github("bryandmartin/corncob") for the development version.
 
 # To begin, we load our example data set as a `phyloseq` object.
 
@@ -66,8 +66,8 @@ sample_data(soil_phylo)[1:3, ]
   
   
 #  - `Plants`: Indicator of whether plants are in the soil for this sample.
-#  - `Amdmt`: Categorical variable representing one of three soil additives; none, 
-# biochar, and freshbiomass, respectively.
+#  - `Amdmt`: Categorical variable representing one of three soil additives; none (0), 
+# biochar (1), and fresh biomass (2), respectively.
 #  - `ID`: Categorical variable representing different plots of soil.
 #  - `Day`: Categorical variable representing one of three days of measurement; 
 # day 1, day 21, and day 81, respectively.
