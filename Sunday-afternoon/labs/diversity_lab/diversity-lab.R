@@ -9,6 +9,7 @@
 
 library(speedyseq) # or library(phyloseq) if this doesn't work
 library(tidyverse)
+install.packages("gridExtra")
 library(gridExtra)
 
 ## If you're on your own machine at home, you will need to install breakaway and DivNet.
