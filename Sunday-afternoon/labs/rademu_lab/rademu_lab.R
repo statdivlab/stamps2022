@@ -203,10 +203,10 @@ ch_fit <-
                                                      # contains our predictor
                                                      # data
            Y = mOTU_table[ch_study_obs,
-                          which_taxa], #which_taxa = we're limiting the taxa
+                          which_mOTU_names], #which_mOTU_names = we're limiting the taxa
                                        # we're looking at to Eubacterium,
                                        # Porphyromonas, and Fusobacterium
-                                       # (which_taxa was constructed above)
+                                       # (which_mOTU_names was constructed above)
 
            constraint_fn = constraint_fn, #make sure radEmu is using our
                                           #constraint function
@@ -302,7 +302,7 @@ ch_fit <-
   fr_fit <-
     emuFit(~ Group,
            covariate_data = metadata[fr_study_obs,],
-           Y = mOTU_table[fr_study_obs,which_taxa],
+           Y = mOTU_table[fr_study_obs,which_mOTU_names],
            optim_only = TRUE,
            tolerance = 1,
            constraint_fn = constraint_fn,
@@ -419,7 +419,7 @@ rbind(
 ch_fit_timing <-
   emuFit(~ Group + Sampling_rel_to_colonoscopy,
          covariate_data = metadata[ch_study_obs,],
-         Y = mOTU_table[ch_study_obs,which_taxa],
+         Y = mOTU_table[ch_study_obs,which_mOTU_names],
          optim_only = TRUE,
          tolerance = 1,
          constraint_fn = constraint_fn,
@@ -437,7 +437,7 @@ timing_available <- !is.na(metadata$Sampling_rel_to_colonoscopy[ch_study_obs])
 ch_fit_timing <-
   emuFit(~ Group + Sampling_rel_to_colonoscopy,
          covariate_data = metadata[ch_study_obs,][timing_available,],
-         Y = mOTU_table[ch_study_obs,which_taxa][timing_available,],
+         Y = mOTU_table[ch_study_obs,which_mOTU_names][timing_available,],
          optim_only = TRUE,
          tolerance = 1,
          constraint_fn = constraint_fn,
@@ -492,7 +492,7 @@ fr_ch_study_obs <- which(metadata$Country %in% c("CHI","FRA"))
 fr_ch_fit <-
   emuFit(~ Group + Country,
          covariate_data = metadata[fr_ch_study_obs,],
-         Y = mOTU_table[fr_ch_study_obs,which_taxa],
+         Y = mOTU_table[fr_ch_study_obs,which_mOTU_names],
          optim_only = TRUE,
          tolerance = 1,
          constraint_fn = constraint_fn,
