@@ -1,3 +1,7 @@
+### radEmu lab
+### David Clausen
+### july 24th, 2022
+
 
 ### In this lab we'll explore a dataset published by Wirbel et al. (2019).
 ### (https://www.nature.com/articles/s41591-019-0406-6)
@@ -21,6 +25,8 @@
 library(tidyverse)
 library(Matrix)
 library(remotes)
+install.packages("monotone")
+library(monotone)
 install_github("https://github.com/statdivlab/radEmu")
 library(radEmu)
 
