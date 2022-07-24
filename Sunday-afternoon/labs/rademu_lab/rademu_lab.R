@@ -20,9 +20,14 @@
 ### First let's load libraries we'll need
 library(tidyverse)
 library(Matrix)
+library(remotes)
+install_github("https://github.com/statdivlab/radEmu")
 library(radEmu)
 
-metadata <- read_csv("wirbel_et_al_metadata.csv")
+
+
+metadata <-
+  read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Sunday-afternoon/labs/rademu_lab/wirbel_et_al_metadata.csv")
 head(metadata)
 
 ### Let's see how many observations we have among cases ("CRC") and
@@ -44,7 +49,9 @@ metadata %>%
   with(table(Country, Group))
 
 ### Now let's load the mOTU table
-mOTU_table <- read_csv("wirbel_et_al_motus.csv")
+mOTU_table <-
+  read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Sunday-afternoon/labs/rademu_lab/wirbel_et_al_mOTUs.csv")
+
 
 # let's take a peek at the mOTU table
 head(mOTU_table)
