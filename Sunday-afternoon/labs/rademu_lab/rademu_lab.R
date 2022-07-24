@@ -410,7 +410,7 @@ rbind(
   coord_cartesian(ylim = c(-5,14))
 
 
-### In the chinese study, samples were taken from patients undergoing
+### In the Chinese study, samples were taken from patients undergoing
 ### colonoscopy, with some patients providing samples before
 ### colonoscopy and some after -- maybe we should try to adjust for this
 ### by including timing relative to colonoscopy as a predictor in our model
