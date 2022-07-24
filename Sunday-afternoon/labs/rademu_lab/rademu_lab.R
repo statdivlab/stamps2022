@@ -102,10 +102,10 @@ rows_in_metadata <- sapply( #sapply basically says "take X and do Y to each
                         #(the row names here tell us what sample each row
                         #of the mOTU table contains observations on)
                         #this next bit specifies what to do with the row names
-                        #namely, tell us if each row name exists inside
-                        #metadata$Sample_ID -- in other words, tell us
-                        #which samples we have mOTU data for we also have
-                        #metadata for
+                        #namely, we're asking it to tell us if each row name
+                        #exists inside metadata$Sample_ID -- in other words,
+                        #to tell us which samples we have mOTU data for we
+                        #also have metadata for
                            function(x) x %in% metadata$Sample_ID # <- this is Y
   )
 
@@ -241,7 +241,7 @@ ch_fit <-
            covariate_data = metadata[ch_study_obs, #ch_study obs = we're
                                                     # only looking at rows
                                                     # containing observations
-                                                    # from the chinese study
+                                                    # from the Chinese study
                                      ], # covariate_data
                                                      # contains our predictor
                                                      # data
