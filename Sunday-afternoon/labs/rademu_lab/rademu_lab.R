@@ -259,8 +259,7 @@ ch_fit <-
                       color = Genus),
                   width = .25)+
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    coord_cartesian(ylim = c(-5,10))
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
   ### The y-axis is a bit wild because of large uncertainty in
   ### the estimate for one mOTU
