@@ -1,6 +1,6 @@
 ### radEmu lab
 ### David Clausen
-### july 24th, 2022
+### July 24th, 2022
 
 
 ### In this lab we'll explore a dataset published by Wirbel et al. (2019).
@@ -91,12 +91,37 @@ dim(metadata)
 ### but you can take my word that we don't need the extra observations
 ### let's get rid of them!
 
-rows_in_metadata <- sapply(rownames(mOTU_table),
-                           function(x) x %in% metadata$Sample_ID)
+# fun fact: I (David) use sapply a lot
+# apparently very few other people do
+# in any case, let me talk you through what this sapply is doing:
+rows_in_metadata <- sapply( #sapply basically says "take X and do Y to each
+                            #element of X
+  rownames(mOTU_table), # <- this is X, so
+                        #so far we've told sapply that we want it to do
+                        #something using the row names of mOTU_table
+                        #(the row names here tell us what sample each row
+                        #of the mOTU table contains observations on)
+                        #this next bit specifies what to do with the row names
+                        #namely, we're asking it to tell us if each row name
+                        #exists inside metadata$Sample_ID -- in other words,
+                        #to tell us which samples we have mOTU data for we
+                        #also have metadata for
+                           function(x) x %in% metadata$Sample_ID # <- this is Y
+  )
 
 
+#so now that we've used everyone's favorite R function, sapply,
+#we have an object "rows_in_metadata" that tells us which rows
+#of mOTU_table correspond to rows in our metadata
+#we'll use this to subset mOTU_table so we have data for the same
+#participants in metadata and mOTU_table
 mOTU_table <- mOTU_table[rows_in_metadata,]
-### let's check our dimensions again now
+
+#note: I'm using base R to do this -- you could also use tidyverse
+#... which some of my colleagues might prefer
+
+
+### in any case, let's check our dimensions again now
 dim(mOTU_table)
 dim(metadata)
 
@@ -118,6 +143,8 @@ order_for_metadata <- sapply(rownames(mOTU_table),
 plot(order_for_metadata)
 
 # yay
+# again -- I'm using base R here. You could also use inner_join() to do the
+# same thing (I am told)
 
 ### if we look at the first few rownames of mOTU_table and sample_IDs
 ### in metadata, we see the order also matches
@@ -144,7 +171,16 @@ for(i in 1:nrow(mOTU_table)){
 
 ### now we'll pull out some taxa we might be interested in to fit models on
 ### (we can also fit a model to all mOTUs, but this takes longer)
-fuso <- sapply(mOTU_names,function(x) grepl("Fusobac",x,fixed = TRUE))
+#yay another sapply
+fuso <- sapply(mOTU_names, #go through the names of our mOTUs
+                           #and for each name:
+
+               function(x) grepl("Fusobac", #see if the name contains the string
+                                            #"Fusobac"
+                                            #if so, return TRUE; otherwise FALSE
+                                 x,
+                                 fixed = TRUE))
+#now do the same thing for some other genera:
 prevo <- sapply(mOTU_names,function(x) grepl("Prevotella ",x,fixed = TRUE))
 porph <-  sapply(mOTU_names,function(x) grepl("Porphyromonas ",x,fixed = TRUE))
 clostr <- sapply(mOTU_names, function(x) grepl("Clostridium",x, fixed = TRUE))
@@ -176,14 +212,15 @@ which_mOTU_names <- which(eubact|porph|fuso)
 
 # Among just the mOTUs in Eubacterium, Porphyromonas, or Fusobacterium,
 # flag those that are in Eubacterium
-eubact_restr <- sapply(restricted_mOTU_names, function(x) grepl("Eubact",x, fixed = TRUE))
+eubact_restr <- sapply(restricted_mOTU_names,
+                       function(x) grepl("Eubact",x, fixed = TRUE))
 
 ### Ooh ok now we're going to define the constraint we'll use with radEmu
 ### For now, we'll make this a median over Eubacterium
 ### (so we require the median of effects we estimate for Eubacterium to be
-### zero)
+### zero
 
-# fun time: how does using this constraint affect the interpretation of
+# fun question time: how does using this constraint affect the interpretation of
 # our estimates?
 
 constraint_fn <- function(x){median(x[eubact_restr])}
@@ -204,7 +241,7 @@ ch_fit <-
            covariate_data = metadata[ch_study_obs, #ch_study obs = we're
                                                     # only looking at rows
                                                     # containing observations
-                                                    # from the chinese study
+                                                    # from the Chinese study
                                      ], # covariate_data
                                                      # contains our predictor
                                                      # data
@@ -264,24 +301,32 @@ ch_fit <-
   ### The y-axis is a bit wild because of large uncertainty in
   ### the estimate for one mOTU
   ### We can fix this with coord_cartesian()
-  ###
 
+  ### here's the help information for this function:
   ?coord_cartesian
 
-  ### thoughts on how to make the y scale more reasonable?
+  ### thoughts on how to make the y scale more reasonable
+  ### in the plot below?
 
   ch_fit_cis%>%
     filter(row ==2) %>%
-    mutate(taxon = factor(restricted_mOTU_names,
-                          levels = mOTU_names[c(
-                            which(eubact),which(porph),which(fuso)
-                          )]
+    mutate(taxon = factor(restricted_mOTU_names, #define "taxon" to be a factor
+                          levels = mOTU_names[c( #put the levels of this factor
+                                                 #in a particular order:
+                            which(eubact), #Eubacterium mOTUs first
+                            which(porph),  #then Porphyromonas
+                            which(fuso)    #then Fusobacterium
+                          )] #(specifying the order of the levels puts the
+                             #x-axis of the plot below in prettier order)
     )) %>%
-    mutate(Genus = sapply(taxon, function(x) ifelse(
-      grepl("Eubact",x,fixed = TRUE),"Eubacterium",
-      ifelse(grepl("Fuso",x,fixed = TRUE),
-             "Fusobacterium",
-             "Porphyromonas")
+    mutate(Genus = sapply(taxon, #sapply! to define a new variable: Genus
+                          function(x) ifelse(
+      grepl("Eubact",x,fixed = TRUE), #if the mOTU contains
+                                      #the string "Eubact",
+      "Eubacterium", #return genus Eubacterium
+      ifelse(grepl("Fuso",x,fixed = TRUE), #otherwise if it contains string "Fuso",
+             "Fusobacterium", #return genus Fusobacterium
+             "Porphyromonas") #otherwise return genus Porphyromonas
     ))) %>%
     ggplot() + geom_point(aes(x = taxon, y = estimate,
                               color = Genus),
@@ -295,6 +340,7 @@ ch_fit <-
 
     )
 
+  # ok now that (hopefully) the plot is easier to read...
   # what patterns do you see across mOTUs?
 
   # many of the estimates for Eubacterium are close to zero -- why?
@@ -402,13 +448,15 @@ rbind(
   ggplot() + geom_point(aes(x = taxon, y = estimate,
                             group = study,
                             color = Genus),
-                        position = position_dodge(.25),
+                        position = position_dodge(.25), #the magic fix
+                                                        #for overlapping CIs
                         size = .5) +
   geom_errorbar(aes(x = taxon, ymin = lower, ymax = upper,
                     group = study,
                     linetype = study,
                     color = Genus),
-                position = position_dodge(.25),
+                position = position_dodge(.25), #use position_dodge() here too
+                                                #so error bars are adjusted too
                 width = .25)+
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
@@ -436,13 +484,46 @@ ch_fit_timing <-
 ### "Matrices must have same number of rows for arithmetic" -- seems like
 ### we might not be giving emuFit inputs that have the correct dimensions
 
+### On that theory, let's look at "Sampling_rel_to_colonoscopy"
 metadata$Sampling_rel_to_colonoscopy[ch_study_obs]
+### What do you notice about the values of this variable?
+
+
+
+
+
+
+
+
+### ... spoiler below
+
+
+
+
+
+
+
+
+
+### that's right! there is an NA in Sampling_rel_to_colonoscopy
+### let's record which observations we have for which
+#### Sampling_rel_to_colonoscopy is not NA
 timing_available <- !is.na(metadata$Sampling_rel_to_colonoscopy[ch_study_obs])
 
+###... and fit a model using only those observations
 ch_fit_timing <-
   emuFit(~ Group + Sampling_rel_to_colonoscopy,
-         covariate_data = metadata[ch_study_obs,][timing_available,],
-         Y = mOTU_table[ch_study_obs,which_mOTU_names][timing_available,],
+         covariate_data = metadata[ch_study_obs,][timing_available, #only rows
+                                             # with non-NA values of
+                                             # Sampling_rel_to_colonoscopy
+                                                  ],
+         Y = mOTU_table[ch_study_obs,which_mOTU_names][timing_available, #same
+                                                # thing except now we're
+                                                # subsetting an already-
+                                                # subsetted version of
+                                                # mOTU_table...
+                                                # I write the most elegant code
+                                                       ],
          optim_only = TRUE,
          tolerance = 1,
          constraint_fn = constraint_fn,
@@ -490,6 +571,10 @@ rbind(
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   coord_cartesian(ylim = c(-5,14))
 
+### seems like point estimates and CIs are pretty similar for adjusted
+### and unadjusted fits -- does this mean we don't need to worry about
+### the impact of timing of sample collection? Why or why not?
+
 ### We can also fit a single model to data from multiple studies
 
 fr_ch_study_obs <- which(metadata$Country %in% c("CHI","FRA"))
@@ -505,7 +590,7 @@ fr_ch_fit <-
          verbose= TRUE,
          reweight = TRUE) # tell us what's happening during optimization
 
-### this will take a moment:
+### this will take a moment (longer than previous fits):
 
 fr_ch_fit_cis <- emuCI(emuMod = fr_ch_fit,
                     nboot = 100,
@@ -540,4 +625,6 @@ fr_ch_fit_cis%>%
 ### Notice that we didn't include Sampling_rel_to_colonoscopy in this regression
 ### (Optional exercise: fit the model above with Sampling_rel_to_colonoscopy
 ### added to the model)
+### (Well, everything is optional -- you can fit a model adjusting for age or
+### BMI as well. Up to you!)
 
