@@ -169,7 +169,7 @@ happi_results <- happi(outcome=isomerase$`L-rhamnose isomerase`,
 
 happi_results$loglik$pvalue %>% tibble() %>% filter(!is.na(.)) %>% tail(1)
 
-# We see that the p-value we get from `happi` is p = 0.180 and that this p-value is 
+# We see that the p-value we get from `happi` is p = 0.169 and that this p-value is 
 # larger than the p-value (p = 0.07) we got using GLM + Rao when we didn't account for mean coverage. 
 
 # We think this is great! In  situations where  the pattern of detection or non-detection 
