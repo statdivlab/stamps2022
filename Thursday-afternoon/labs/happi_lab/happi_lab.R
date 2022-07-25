@@ -42,7 +42,7 @@ library(happi)
 library(tidyverse)
 library(ggplot2)
 
-prausnitzii_data <- read_csv("happi_data/stamps_prausnitzii.csv")
+prausnitzii_data <- read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Thursday-afternoon/labs/happi_lab/stamps_prausnitzii.csv")
 
 # --------------------- Data description -------------------------
 
