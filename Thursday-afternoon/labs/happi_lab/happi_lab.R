@@ -182,7 +182,7 @@ happi_results$beta %>% tibble() %>% drop_na() %>% tail(1)
 
 #.[,1]  [,2]
 # <dbl> <dbl>
-# -0.699  2.98
+# -0.504  2.77
 # and we see that our estimates are -0.699 for our intercept beta_0
 # and our estimate for beta_1 which corresponds to our main predictor of interest is 2.98 
 # Based on our results, we see that the gene encoding for L-rhamnose isomerase is more enriched in 
@@ -202,6 +202,8 @@ library(parallel) # load parallel package
 # and also a function run_happi_prausnitzii() that contains all the specifications of happi() we want to use 
 
 x_matrix_prausnitzii <- model.matrix(~farm_worker, data = prausnitzii_data)
+
+# this function will take in a gene (denoted by the column of the dataframe prausnitzii_data) and run happi on that gene
 
 run_happi_prausnitzii <- function(colnum) {
   happi(outcome=unlist(prausnitzii_data[,colnum]), 
