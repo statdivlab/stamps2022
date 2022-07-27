@@ -64,11 +64,11 @@ dim(prausnitzii_data) # dim 21 x 1356
 # identified as present (=1) or absent (=0) in each genome 
 
 head(prausnitzii_data)
-
 # Our covariates are as follows:
 
-#  - `farm_worker`: Indicator of whether the genome was recovered from a farm worker or community control
-#  - `group`: Categorical variable designating association with farm worker or community control 
+#  - `group`: The occupational status of the person from whom the MAG was recovered: "community" or "farm_worker"
+#  - `farm_worker`: Indicator of whether the genome was recovered from a farm worker (farm_worker=1) or community control (farm_worker=0)
+#             Useful for modelling. 
 #  - `mean_coverage`: the mean coverage* of each MAG/genome 
 # *mean coverage refers to the average number of reads that align to or "cover" a reference area (e.g. genome size or locus size)
 
@@ -101,6 +101,7 @@ isomerase %>% ggplot() +
   theme(legend.position="right") +
   scale_y_continuous(breaks = c(0,1),
                      label = c("Not detected", "Detected"), limits=c(-0.32, 1.1)) 
+
 
 # So we see that there are more community control-associated MAGs that do not have 
 # `L-rhamnose isomerase` detected in their genomes and these appear to be MAGs that have lower mean coverage. 
