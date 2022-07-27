@@ -233,11 +233,11 @@ happi_results$beta %>% tibble() %>% drop_na() %>% tail(1)
 
 # ----------------- But what if I want to consider all of my taxa? -------------------------
 
-# You can parallelize your analyses! To do that you need to make sure you have the package `parallel` installed. 
+# You can parallelize your analyses! We'll do this with the package `parallel`. This is already installed
+# on the RStudio Server. To install on your local RStudio, uncomment the following lines.
 
-if (!require("parallel", quietly = TRUE))
-  # check that parallel is installed. If not then install. 
-  install.packages("parallel") 
+#if (!require("parallel", quietly = TRUE))
+#  install.packages("parallel") # check that parallel is installed. If not then install. 
 
 # load parallel package 
 library(parallel) 
