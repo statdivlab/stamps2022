@@ -43,110 +43,126 @@ library(happi)
 library(tidyverse)
 library(ggplot2)
 
+# We are going to use the same data that you used for the `corncob` lab. To do this, we will
+# load the `corncob` package, along with the `phyloseq` package to work with the soil data.
 
-# ------------------ Sarah stopped updating here ---------------------------------
+library(corncob)
+library(phyloseq)
+data(soil_phylo)
 
-# for 16s tutorial:
-# -load data
-# -look at and clean data
-# -fit naive model for a single taxon (report p-value)
-# -fit happi for a single taxon (report p-value and beta estimates)
-# -fit happi for all taxa in our data 
+# --------------------------- Manipulate data -------------------------------------
 
-# -------------------------------------------------------------------------------------
+# We can start by looking at a description with the data with 
 
-prausnitzii_data <- read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Thursday-afternoon/labs/happi_lab/stamps_prausnitzii.csv")
+soil_phylo
 
-# --------------------- Data description -------------------------
+# We want to consider our data at the phylum level
 
-# The data that we will be using for this lab focuses on 
-# 21 Faecalibacterium prausnitzii metagenome-assembled genomes (MAGs). 
-# These 21 MAGs were recovered from shotgun metagenomic sequencing data of stool samples 
-# collected from a cohort of farm workers and community controls. 
+# First, let's collapse the samples to the phylum level.
 
-# We are interested in understanding whether there are functions that are associated with either of these groups 
-# Put another way, are there functions that are more enriched in F. prausnitzii genomes 
-# belonging to farm workers compared to community controls? 
+soil <- soil_phylo %>% 
+  tax_glom("Phylum") 
 
-# Let's look at the dimensions of our data 
-dim(prausnitzii_data) # dim 21 x 1356 
-# Our data has 21 rows and 1356 columns. 
-# The 21 rows correspond to the 21 F. prausnitzii metagenome-assembled genomes (MAGs)
-# These genomes were recovered from 11 farm workers and 10 community controls 
-# Columns 3-1355 correspond to Clusters of Orthologous Groups (COG) functions that have been 
-# identified as present (=1) or absent (=0) in each genome 
+# Let's examine the phyloseq object.
 
-head(prausnitzii_data)
+soil
 
-# Our covariates are as follows:
+# We now see that we have an OTU abundance table with 39 OTUs and 119 samples. We 
+# can extract using `otu_table()`. Let's examine a small subset of our data in more 
+# detail.
 
-#  - `farm_worker`: Indicator of whether the genome was recovered from a farm worker or community control
-#  - `group`: Categorical variable designating association with farm worker or community control 
-#  - `mean_coverage`: the mean coverage* of each MAG/genome 
-# *mean coverage refers to the average number of reads that align to or "cover" a reference area (e.g. genome size or locus size)
+otu_table(soil)[1:3, 1:3]
 
-# We are going to use the mean coverage of each genome as the genome quality variable we want to use with `happi`. 
+# We can also see that we have 5 sample variables. We can extract this using 
+# `sample_data()`. Let's again examine a small subset in more detail.
 
+sample_data(soil)[1:3, ]
 
-# --------------------- Why account for genome quality? -------------------------
-# Metagenome-assembled genomes (MAGs) are frequently incomplete or can contain errors 
-# (i.e., contamination of fragments from other, missing genes due to assembly issues or shallow sequencing depth). 
-# These errors can impact the probability of detecting a gene in our genomes so we want to be able to account 
-# for differential genome quality factors and improve our statistical inference! 
+# We're going to be looking closely at the `Amdmt` variable. 
 
+#  - `Amdmt`: Categorical variable representing one of three soil additives; none (0), 
+# biochar (1), and fresh biomass (2), respectively.
 
-# --------------------- Let's use happi! -------------------------
-# We are interested in understanding whether the presence of a gene, 
-# we'll choose the gene that encodes for L-rhamnose isomerase,
-# is more enriched (aka prevalent) in F. prausnitzii MAGs in one group compared to another. 
+# Finally, we have a taxonomy table with 7 taxonomic ranks. 
 
-# Let's subset our data to look at this particular gene for L-rhamnose isomerase
-prausnitzii_data %>% 
-  dplyr::select(group, farm_worker, mean_coverage,
-                `L-rhamnose isomerase`) -> isomerase
+tax_table(soil)[1:3, ]
 
-# And let's plot this data to see what we're working with! 
-isomerase %>% ggplot() +
-  geom_jitter(aes(x = mean_coverage, y = `L-rhamnose isomerase`, col = group, pch = group), height=0.08, width=0.00) +
-  xlab("Mean coverage") + ylab("") +
+# We want to consider the relationship between the presence or absence of each taxon
+# and `Amdmt` (soil additives), while accounting for sequencing depth (this is the 
+# variable that will give us information about the quality of each sample).
+
+# To start, we want to include presence and absence information for each taxon. We can
+# do this by taking the otu table and checking whether each element in the table is 
+# greater than 0 (if greater than 0 the taxon is considered as present in the sample, 
+# if equal to 0 the taxon is considered absent).
+
+pres_mat <- as.data.frame(otu_table(soil)) > 0
+
+# We'll transpose our matrix so that the samples represent rows and turn it into a data frame
+pres_mat <- as.data.frame(t(pres_mat))
+
+# We'll replace our otu labels with phylum names.
+
+names(pres_mat) <- tax_table(soil)[,2]
+
+# Next, we'll add our covariate of interest, `Amdmt`. We are going to collapse the levels
+# of soil additives down to just two, 0 for no additives and 1 for additives. 
+
+soil_df <- pres_mat %>% 
+  mutate(soil_add = as.factor(ifelse(sample_data(soil)$Amdmt == 0, 0, 1)))
+  
+# Finally, we need information about sampling depth. For each sample, we'll 
+# record the number of reads across all taxa in that sample. 
+
+soil_df <- soil_df %>%
+  mutate(seq_depth = colSums(as.data.frame(otu_table(soil))))
+
+# --------------------------- Manipulate data -------------------------------------
+
+# Let's consider phylum Tenericutes. We can check how many samples it appears in
+
+sum(soil_df[, "Tenericutes"])
+
+# It appears in 64 of the 119 samples (a little more than half).
+# let's subset our data to only consider Tenericutes
+
+tnct_df <- soil_df %>%
+  select(Tenericutes, soil_add, seq_depth)
+
+# Let's plot the relationship between these variables. 
+
+ggplot(tnct_df, aes(x = seq_depth, y = Tenericutes, col = soil_add)) + 
+  geom_jitter(height = 0.08, width = 0.00) + 
   theme_bw() + 
-  scale_colour_manual(values= c("mediumseagreen", "dodgerblue")) + 
-  theme(legend.position="right") +
-  scale_y_continuous(breaks = c(0,1),
-                     label = c("Not detected", "Detected"), limits=c(-0.32, 1.1)) 
+  labs(x = "Sequencing Depth",
+       col = "Additive",
+       title = "Tenericutes presence by sequencing depth") + 
+  theme(plot.title = element_text(hjust = 0.5))
 
-# So we see that there are more community control-associated MAGs that do not have 
-# `L-rhamnose isomerase` detected in their genomes and these appear to be MAGs that have lower mean coverage. 
+# Here we can see that generally the samples in which Tenericutes is not present have 
+# lower sequencing depth. We can also see more samples with no additives (a value of 0) 
+# in which Tenericutes is present. Let's model this relationship! 
 
-# Looking at this plot, there may be a potential difference between the presence/absence of 
-# `L-rhamnose isomerase` by  site where this gene appears to be more prevalent in 
-# farm worker-associated MAGs than in community-associated MAGs. 
-# However, are we conflating this difference in gene detection with 
-# differences in genome quality (aka mean coverage)? 
+# --------------------------- Modeling our data --------------------------------
 
-# Let's compare an existing method for gene enrichment testing with `happi`. 
-# One existing method to test the hypothesis of whether there is a difference in gene presence 
-# by some covariate of interest is to use a generalized linear model (GLM) with Rao score test. 
+# We're going to start by running a method to model presence of Tenericutes based on soil
+# additives without account for sequencing depth. We'll do this with a generalized linear
+# model (GLM) and test for a difference with a Rao score test. 
 
-# So let's use that and see what we get. 
-ha <- glm(`L-rhamnose isomerase` ~ farm_worker, family="binomial", data = isomerase)
-h0 <- glm(`L-rhamnose isomerase` ~ 1, family="binomial", data = isomerase)
+ha <- glm(Tenericutes ~ soil_add, family="binomial", data = tnct_df)
+h0 <- glm(Tenericutes ~ 1, family="binomial", data = tnct_df)
 anova(ha, h0, test = "Rao")[2, "Pr(>Chi)"]
 
-# Using a GLM + Rao score test we see that the p-value when testing for differences between 
-# gene presence in farm worker compared to community control associated F. prausnitzii MAGs is 
-# [1] 0.07246124
+# We get a p-value of 0.011. This means that if our alpha level is at 0.05, we can reject
+# our null hypothesis that there is no relationship between the presence/absence of 
+# Tenericutes and the presence of soil additives. 
 
-# Recall though, we were concerned about conflating of this difference in gene detection with 
-# differences in mean coverage. We would expect that if this were the case, a method 
-# that does not account for genome quality would produce smaller p-values than a method 
-# that does account for genome quality. 
+# However, we know that this approach does not account for sequencing depth. Let's test 
+# again with happi, adding in our sequencing depth information. 
 
-# `happi` accounts for genome quality in its modeling of gene presence and allows user flexibility 
-# to specify which genome quality variable is relevant to their experimental condition. 
-# Let's see how `happi` does! 
+# To start, we need to build a design matrix that holds our covariate of interest. 
 
-x_matrix <- model.matrix(~farm_worker, data = isomerase) # create design matrix using your main predictor of interest
+x_matrix <- model.matrix(~soil_add, data = tnct_df)
 
 # the main function we'll be using is happi() which has various options that you can specify 
 # We'll describe a few here but to see the full list of available options you can run: 
@@ -155,128 +171,241 @@ x_matrix <- model.matrix(~farm_worker, data = isomerase) # create design matrix 
 
 # The main options we'll use to run happi() include: 
 #  - outcome: Your gene presence/absence variable that needs to be coded as 0 or 1
-#  - covariate: the main predictor/covariate of interest formatted as a design matrix (as we did up above with x_matrix)
-#  - quality_var: the quality variable of interest. Currently happi only accepts 1 quality variable but we will expand this capability to multiple quality variables 
-#  - max_iterations: the maximum number of E-M steps the algorithm will run for. A larger number of steps may mean a longer run time if the algorithm doesn't reach the change_threshold.  
-#  - change_threshold: the maximum percent change of the likelihood for 5 iterations in a row for both the alternative and null models that would signal termination of the algorithm 
-#  - epsilon: the fixed probability of observing a gene given that it shouldn't be present (aka contamination of the genome from other genomes)
-#  - method: method for estimating f. Defaults to "splines" which fits a monotone spline with df determined by argument spline_df; "isotone" for isotonic regression fit
+#  - covariate: the main predictor/covariate of interest formatted as a design matrix (as we 
+# did up above with x_matrix)
+#  - quality_var: the quality variable of interest. Currently happi only accepts 1 quality 
+#     variable but we will expand this capability to multiple quality variables 
+#  - max_iterations: the maximum number of E-M steps the algorithm will run for. A larger 
+#     number of steps may mean a longer run time if the algorithm doesn't reach the change_threshold.  
+#  - change_threshold: the maximum percent change of the likelihood for 5 iterations in a row 
+#    for both the alternative and null models that would signal termination of the algorithm 
+#  - epsilon: the fixed probability of observing a gene given that it shouldn't be present 
+#    (aka contamination of the genome from other genomes)
+#  - method: method for estimating f. Defaults to "splines" which fits a monotone spline with
+#    df determined by argument spline_df; "isotone" for isotonic regression fit
 #  - firth: uses Firth penalty (default is TRUE)
-#  - spline_df: degrees of freedom (in addition to intercept) to use in monotone spline fit (default is 3)
+#  - spline_df: degrees of freedom (in addition to intercept) to use in monotone spline fit 
+#    (default is 3)
 
-happi_results <- happi(outcome=isomerase$`L-rhamnose isomerase`, 
-                       covariate=x_matrix, 
-                       quality_var=isomerase$mean_coverage,
-                       max_iterations=100, 
-                       change_threshold=0.001, 
-                       epsilon=0, 
+happi_results <- happi(outcome = tnct_df$Tenericutes, 
+                       covariate = x_matrix, 
+                       quality_var = tnct_df$seq_depth,
+                       max_iterations = 100, 
+                       change_threshold = 0.001, 
+                       epsilon = 0, 
                        method = "splines", 
                        firth = T, 
-                       spline_df = 4)
+                       spline_df = 3)
+
 # Let's look  at our results! 
-# ** note that the p-value results are stored in a vector (happi_results$loglik$pvalue) that is the length of 
-# the number of max_iterations you specified. If the algorithm reaches the change_threshold requirements 
-# before the max_iterations, this will result in a lot of NAs at the end because the algorithm completes earlier. 
-# The final p-value result is the last element of happi_results$loglik$pvalue before the trailing NAs. 
-# In this particular example that would be element 42 as can be seen using happi_results$loglik$pvalue[42] or...
+# ** note that the p-value results are stored in a vector (happi_results$loglik$pvalue) that 
+# is the length of the number of max_iterations you specified. If the algorithm reaches the 
+# change_threshold requirements before the max_iterations, this will result in a lot of NAs at 
+# the end because the algorithm completes earlier. The final p-value result is the last element
+# of happi_results$loglik$pvalue before the trailing NAs. In this particular example that would 
+# be element 42 as can be seen using happi_results$loglik$pvalue[42] or...
 
 happi_results$loglik$pvalue %>% tibble() %>% filter(!is.na(.)) %>% tail(1)
 
-# We see that the p-value we get from `happi` is p = 0.169 and that this p-value is 
-# larger than the p-value (p = 0.07) we got using GLM + Rao when we didn't account for mean coverage. 
-
-# We think this is great! In  situations where  the pattern of detection or non-detection 
-# could be attributable to genome quality, we think statements about significance should be moderated. 
-# In this case we want to see larger p-values! 
+# Our p-value here is 0.036. In this case, at an alpha level of 0.05, we are still able to 
+# reject the null hypothesis. However, the strength of our evidence against the null hypothesis
+# is lower (a higher p-value) because we've now accounted for different sequencing depth in our
+# model. 
 
 # If we want to get the beta estimates from happi we can run the following: 
 
 happi_results$beta %>% tibble() %>% drop_na() %>% tail(1)
 
-#.[,1]  [,2]
-# <dbl> <dbl>
-# -0.504  2.77
-# and we see that our estimates are -0.699 for our intercept beta_0
-# and our estimate for beta_1 which corresponds to our main predictor of interest is 2.98 
-# Based on our results, we see that the gene encoding for L-rhamnose isomerase is more enriched in 
-# F. prausnitzii MAGs found in farm workers but that this difference is not significant at the 5% significance level (p = 0.180). 
+# and we see that our estimates are 1.46 for our intercept beta_0 and our estimate for beta_1 
+# which corresponds to our main predictor of interest is -1.08. Based on our results, we see 
+# that Tenericutes is less likely to be present in soil that has additives, and this difference is 
+# not significant at the 5% significance level (p = 0.036). 
 
-
-# --------------------- But what if I have thousands of genes I want to look at? -------------------------
+# ----------------- But what if I want to consider all of my taxa? -------------------------
 
 # You can parallelize your analyses! To do that you need to make sure you have the package `parallel` installed. 
 
 if (!require("parallel", quietly = TRUE))
-  install.packages("parallel") # check that parallel is installed. If not then install. 
+  # check that parallel is installed. If not then install. 
+  install.packages("parallel") 
 
-library(parallel) # load parallel package 
+# load parallel package 
+library(parallel) 
 
-# to run your analyses in parallel let's first make our design matrix x_matrix_prausnitzii
-# and also a function run_happi_prausnitzii() that contains all the specifications of happi() we want to use 
+# we need to make a new design matrix to account for our full dataset 
+x_matrix_all <- model.matrix(~soil_add, data = soil_df)
 
-x_matrix_prausnitzii <- model.matrix(~farm_worker, data = prausnitzii_data)
+# this function will take in a taxon (denoted by the column of the dataframe soil_df) and run 
+# happi on that taxon
 
-# this function will take in a gene (denoted by the column of the dataframe prausnitzii_data) and run happi on that gene
-
-run_happi_prausnitzii <- function(colnum) {
-  happi(outcome=unlist(prausnitzii_data[,colnum]), 
-        covariate=x_matrix_prausnitzii, 
-        quality_var=prausnitzii_data$mean_coverage,
-        method="splines", 
-        firth=T, 
-        spline_df=4,
-        max_iterations=100, 
-        change_threshold=0.01, 
-        epsilon=0)
+run_happi_all <- function(colnum) {
+  happi(outcome = unlist(soil_df[,colnum]), 
+        covariate = x_matrix_all, 
+        quality_var = soil_df$seq_depth,
+        method = "splines", 
+        firth = T, 
+        spline_df = 3,
+        max_iterations = 100, 
+        change_threshold = 0.01, 
+        epsilon = 0)
 }
 
-# For the purposes of this lab we will not be running all the COG functions and will focus on only 50. 
-# Additionally for quicker run-time we're going to keep the max_iterations low at 100 
-# and a higher change threshold of 0.01 
+# Additionally for quicker run-time we're going to keep the max_iterations 100 and a change 
+# threshold of 0.01 
 
 # To run happi in parallel: 
-prausnitzii_results <- mclapply(3:52, run_happi_prausnitzii, mc.cores=6) # this should only take about a minute or two to finish running... 
-# 3:52 denotes the COG functions I want to run from columns 3 - 52 
-# run_happi_prausnitzii is the function we created above 
-# and mc.cores allows me to specify how many cores I want to allocate to this computational task 
+all_taxa_results <- mclapply(1:39, run_happi_all, mc.cores=6) 
+# this should only take about a minute or two to finish running... 
+# 1:39 denotes the columns of `soil_df` that include taxa presence information
+# run_happi_all is the function we created above 
+# and mc.cores allows us to specify how many cores we want to allocate to this computational 
+# task 
 
-# we store our results in prausnitzii_results and can consolidate our beta estimates along with p-values using
+# we store our results in all_taxa_results and can consolidate our beta estimates along with
+# p-values using
 
-pvalue_prausnitzii <- lapply(prausnitzii_results, function(x) tail(x$loglik$pvalue[!is.na(x$loglik$pvalue)], 1)) %>% unlist
-beta_prausnitzii <- lapply(prausnitzii_results, function(x) tail(x$beta[!is.na(x$beta[,1]),],1)) %>% do.call("rbind",.)
+pvalues <- lapply(all_taxa_results, function(x) tail(x$loglik$pvalue[!is.na(x$loglik$pvalue)], 1)) %>% unlist
+betas <- lapply(all_taxa_results, function(x) tail(x$beta[!is.na(x$beta[,1]),],1)) %>% do.call("rbind",.)
 
-prausnitzii_hyp_results <- tibble("gene" = colnames(prausnitzii_data)[3:52], # grab the names of each gene from prausnitzii_data
-                                  pvalue_prausnitzii, # Combine with our pvalues and betas
-                                  beta_prausnitzii[,1],
-                                  beta_prausnitzii[,2]) %>% 
-  arrange(pvalue_prausnitzii)
+# let's combine our taxon name with our p-values and beta estimates
 
-head(prausnitzii_hyp_results)
+hyp_results <- tibble("taxon" = colnames(soil_df)[1:39], 
+                                  pvalues, 
+                                  betas[,1],
+                                  betas[,2]) %>% 
+  arrange(pvalues)
+head(hyp_results)
 
 # And here we see the variables
-#  - gene: contains the COG function names
-#  - pvalue_prausnitzii: the happi p-values 
-#  - beta_prausnitzii[, 1]: the estimate for beta0 that corresponds to our intercept 
-#  - beta_prausnitzii[, 2]: the estimate for beta1 that corresponds to our primary covariate (farm_worker)
+#  - taxon: contains taxon name (here the Phylum name)
+#  - pvalues: the happi p-values 
+#  - betas[, 1]: the estimate for beta0 that corresponds to our intercept 
+#  - betas[, 2]: the estimate for beta1 that corresponds to our primary covariate (soil additive)
 
-### Remember to choose your favorite FDR or FWER method to address multiple comparisons! 
+# In this case, we see that only the taxon we considered earlier (Tenericutes) is signficiant
+# at the 0.05 alpha level.
 
+# However, remember to choose your favorite FDR or FWER method to address multiple comparisons!
+
+# --------------------- Sensitivity analyses using epsilon  -------------------------
+
+# We can also change the value of epsilon which is defined as the probability of observing a 
+# taxon given that it shouldn't be present aka the probability of "contamination" of our 
+# sample from other genetic information. We might be interested in trying different values of 
+# epsilon to assess the robustness of our results to varying levels of contamination in our 
+# samples. 
+
+# For this set of 39 taxa let's try setting epsilon = 0.05 and compare with our results when 
+# epsilon = 0
+
+run_happi_all_e05 <- function(colnum) {
+  happi(outcome = unlist(soil_df[,colnum]), 
+        covariate = x_matrix_all, 
+        quality_var = soil_df$seq_depth,
+        method = "splines", 
+        firth = T, 
+        spline_df = 3,
+        max_iterations = 100, 
+        change_threshold = 0.01, 
+        epsilon = 0.05)
+}
+all_taxa_results_e05 <- mclapply(1:39, run_happi_all_e05, mc.cores=6) 
+# we store our results in all_taxa_results_e05 and can consolidate our beta estimates along 
+# with p-values using
+pvalues_e05 <- lapply(all_taxa_results_e05, function(x) tail(x$loglik$pvalue[!is.na(x$loglik$pvalue)], 1)) %>% unlist
+betas_e05 <- lapply(all_taxa_results_e05, function(x) tail(x$beta[!is.na(x$beta[,1]),],1)) %>% do.call("rbind",.)
+
+# To compare results let's merge both sets of results and look at the differences between the 
+# p-values, beta0, and beta1 when using epsilon = 0 and 0.05 
+hyp_results_comparison <- tibble("taxon" = colnames(soil_df)[1:39],
+                                             pvalues_e05, 
+                                             betas_e05[,1],
+                                             betas_e05[,2]) %>% 
+  full_join(hyp_results, by = "taxon") %>% # merge with previous results when epsilon = 0 
+  mutate(pvalue_diff = round(pvalues_e05-pvalues, 3), # round differences to 3 decimal places 
+         beta0_diff = round(as.numeric(`betas_e05[, 1]`) - as.numeric(`betas[, 1]`), 3), 
+         beta1_diff = round(as.numeric(`betas_e05[, 2]`) - as.numeric(`betas[, 2]`), 3)) %>%
+  arrange(pvalues)
+
+# We can visualize the differences in p-values, beta0, and beta1 between happi results when 
+# using epsilon = 0 and epsilon = 0.05 
+
+ggplot(data = hyp_results_comparison, 
+       aes(x = taxon, y = pvalue_diff)) + 
+  geom_point() + 
+  theme_bw(base_size = 10) + 
+  labs(y = "Difference btwn pvals ("~epsilon~"=0.05 -"~epsilon~"=0)",
+       x = "Taxon",
+       title = "P-value differences for all taxa") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        plot.title = element_text(hjust = 0.5))
+
+# Here we can see that many of our p-values are very similar when we change epsilon. However
+# there are a few taxa for which the p-value changes by up to 0.2, and one taxon for which
+# the p-value increases by more than 0.5. Let's look closer at Phylum MVP-21. 
+
+hyp_results_comparison %>%
+  filter(taxon == "MVP-21")
+
+# We can see that the p-value when epsilon = 0 is 0.06 and when epsilon = 0.05 the p-value is
+# 0.606. Why has this changed so much?
+
+ggplot(soil_df, aes(x = seq_depth, y = `MVP-21`, col = soil_add)) + 
+  geom_jitter(height = 0.08, width = 0.00) + 
+  theme_bw() + 
+  labs(x = "Sequencing Depth",
+       col = "Additive",
+       title = "MVP-21 presence by sequencing depth") + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+# It turns out that out of the 119 samples, only 4 of them contain MVP-21. So, when we say
+# that epsilon = 0 there is no probability of observing a taxon when it is not actually there.
+# However, when we set epsilon = 0.05, we say that there is a 5% probability of observing a 
+# taxon given that it shouldn't be present. When we allow for this non-zero probability of 
+# falsing observing a taxon, our p-value for the relationship between soil additives and 
+# the presence of MVP-21 increases because we are accounting for the possibility of erroneously
+# observing MVP-21 in the 4 samples that we observed them in. 
+
+ggplot(data = hyp_results_comparison, 
+       aes(x = taxon, y = beta0_diff)) + 
+  geom_point() + 
+  theme_bw(base_size = 10) + 
+  labs(y = "Difference btwn intercepts ("~epsilon~"=0.05 -"~epsilon~"=0)",
+       x = "Taxon",
+       title = "Intercept estimates differences for all taxa") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        plot.title = element_text(hjust = 0.5))
+
+ggplot(data = hyp_results_comparison, 
+       aes(x = taxon, y = beta1_diff)) + 
+  geom_point() + 
+  theme_bw(base_size = 10) + 
+  labs(y = "Difference btwn coef ests ("~epsilon~"=0.05 -"~epsilon~"=0)",
+       x = "Taxon",
+       title = "Coefficient estimates differences for all taxa") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        plot.title = element_text(hjust = 0.5))
+  
+# This is a case where doing a sensitivity analysis is a great idea! It shows us that while
+# the results for most taxa are robust to a change in epsilon, that is not the case for 
+# MVP-21.
+
+# If we wanted to comprehensively understand the robustness of our results to varying degrees 
+# of contamination we could continue to dial up or dial down values of epsilon (probability 
+# between 0 and 1 of observing a gene given that it should be absent) and see what happens to 
+# our results as epsilon increases! 
 
 # --------------------- Final Notes -------------------------
-# - `happi` can be extended for use when testing for gene presence between metagenomes of varying quality (e.g., sequencing depth)
-# - `happi` currently can only take in 1 quality variable but we are prioritizing incorporation of multiple quality variables
-# - If you have additional questions or issues with using `happi` please open an issue on our GitHub https://github.com/statdivlab/happi
+# - `happi` can be used for testing for gene presence in pangenomes (this is its primary 
+#    objective).
+# - `happi` can be extended for use when testing for gene presence between metagenomes of 
+#    varying quality (e.g., sequencing depth)
+# - `happi` currently can only take in 1 quality variable but we are prioritizing incorporation 
+#    of multiple quality variables
+# - If you have additional questions or issues with using `happi` please open an issue on our 
+#    GitHub https://github.com/statdivlab/happi
 
-# Please cite our work if you use `happi`! 
-# Pauline Trinh, David S. Clausen, and Amy D. Willis. happi: a hierarchical approach to pangenomics inference. bioRxiv e-prints, April 2022.
-
-
-
-
-
-
-
-
-
-
+# Finally, please cite this work if you use `happi`! 
+# Pauline Trinh, David S. Clausen, and Amy D. Willis. happi: a hierarchical approach to 
+# pangenomics inference. bioRxiv e-prints, April 2022.
 
