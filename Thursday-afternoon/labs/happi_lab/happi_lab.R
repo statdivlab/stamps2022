@@ -24,12 +24,16 @@
 
 # --------------------- Installing happi -------------------------
 
-# To get started let's install `happi` if you haven't already done so! 
-# To install: 
-if (!require("remotes", quietly = TRUE))
-  install.packages("remotes") # check that remotes is installed
+# Because we're working on the RStudio Server, we already have `happi` installed. However,
+# if you're working at home, uncomment the follow lines and run them in your console (not in
+# this script).
 
-remotes::install_github("statdivlab/happi", build_vignettes = TRUE, dependencies = TRUE) # install happi using remotes and build vignettes
+# To install: 
+#if (!require("remotes", quietly = TRUE))
+#  install.packages("remotes") # check that remotes is installed
+
+# Install happi using remotes and build vignettes: 
+#remotes::install_github("statdivlab/happi", build_vignettes = TRUE, dependencies = TRUE) 
 
 # if you want to check that `happi` is installed on your system you can run: 
 "happi" %in% rownames(installed.packages()) # This should return [1] TRUE if happi is installed

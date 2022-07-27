@@ -25,12 +25,16 @@
 
 # --------------------- Installing happi -------------------------
 
-# To get started let's install `happi` if you haven't already done so! 
-# To install: 
-if (!require("remotes", quietly = TRUE))
-  install.packages("remotes") # check that remotes is installed
+# Because we're working on the RStudio Server, we already have `happi` installed. However,
+# if you're working at home, uncomment the follow lines and run them in your console (not in
+# this script).
 
-remotes::install_github("statdivlab/happi", build_vignettes = TRUE, dependencies = TRUE) # install happi using remotes and build vignettes
+# To install: 
+#if (!require("remotes", quietly = TRUE))
+#  install.packages("remotes") # check that remotes is installed
+
+# Install happi using remotes and build vignettes: 
+#remotes::install_github("statdivlab/happi", build_vignettes = TRUE, dependencies = TRUE) 
 
 # if you want to check that `happi` is installed on your system you can run: 
 "happi" %in% rownames(installed.packages()) # This should return [1] TRUE if happi is installed
@@ -200,8 +204,8 @@ happi_results <- happi(outcome = tnct_df$Tenericutes,
 # Let's look  at our results! 
 # ** note that the p-value results are stored in a vector (happi_results$loglik$pvalue) that 
 # is the length of the number of max_iterations you specified. If the algorithm reaches the 
-# change_threshold requirements before the max_iterations, this will result in a lot of NAs at 
-# the end because the algorithm completes earlier. The final p-value result is the last element
+# change_threshold requirements before the max_iterations (i.e., converges sooner), this will 
+# result in a lot of NAs at the end because the algorithm completes earlier. The final p-value result is the last element
 # of happi_results$loglik$pvalue before the trailing NAs. In this particular example that would 
 # be element 42 as can be seen using happi_results$loglik$pvalue[42] or...
 
@@ -212,12 +216,18 @@ happi_results$loglik$pvalue %>% tibble() %>% filter(!is.na(.)) %>% tail(1)
 # is lower (a higher p-value) because we've now accounted for different sequencing depth in our
 # model. 
 
+# Recall from our picture that this taxon was less detected in lower sequencing depth samples.
+# happi gives a larger p-value (less evidence for a difference in presence between groups) 
+# because the pattern of detection or non-detection could be attributable to genome quality. 
+# So we think happi is doing a good thing here -- by saving you from getting excited by a 
+# signature attributable to sequencing depth, not biology. 
+
 # If we want to get the beta estimates from happi we can run the following: 
 
 happi_results$beta %>% tibble() %>% drop_na() %>% tail(1)
 
 # and we see that our estimates are 1.46 for our intercept beta_0 and our estimate for beta_1 
-# which corresponds to our main predictor of interest is -1.08. Based on our results, we see 
+# which corresponds to the presence of soil additives is -1.08. Based on our results, we see 
 # that Tenericutes is less likely to be present in soil that has additives, and this difference is 
 # not significant at the 5% significance level (p = 0.036). 
 
@@ -285,15 +295,26 @@ head(hyp_results)
 # In this case, we see that only the taxon we considered earlier (Tenericutes) is signficiant
 # at the 0.05 alpha level.
 
-# However, remember to choose your favorite FDR or FWER method to address multiple comparisons!
+# From here, you can 
+# 1. choose your favorite FDR or FWER method to address multiple comparisons! 
+#     e.g., with the qvalue::qvalue (you can get this with install.packages("BiocManager") and 
+#           BiocManager::install("qvalue")), then as follows
+# all_taxa_hyp_results %>%
+#   mutate(qvalue = qvalue::qvalue(pvalues, 0.05))
+#     Note that this won't work well with only 39 taxa (qvalue needs more hypotheses
+#    to well-estimate the proportion of true null hypotheses)... but it should work 
+#    great at a finer taxonomic level when you have thousands of taxa. 
+# 2. Look at taxa that are significant. Even if nothing is highly significant, you 
+#    can look at what taxa were most differentially present across your environmental
+#    types. 
+# 3. (Optional) Get excited about your biology!
 
 # --------------------- Sensitivity analyses using epsilon  -------------------------
 
-# We can also change the value of epsilon which is defined as the probability of observing a 
-# taxon given that it shouldn't be present aka the probability of "contamination" of our 
-# sample from other genetic information. We might be interested in trying different values of 
-# epsilon to assess the robustness of our results to varying levels of contamination in our 
-# samples. 
+# happi has a hyperparameter epsilon, which is the probability of observing a taxon 
+# given that it shouldn't be present. This can usually be thought of as 
+# "contamination" of our sample from other genetic information. 
+# We are interested in trying different values of epsilon to assess the robustness of our results 
 
 # For this set of 39 taxa let's try setting epsilon = 0.05 and compare with our results when 
 # epsilon = 0
@@ -330,19 +351,24 @@ hyp_results_comparison <- tibble("taxon" = colnames(soil_df)[1:39],
 # We can visualize the differences in p-values, beta0, and beta1 between happi results when 
 # using epsilon = 0 and epsilon = 0.05 
 
-ggplot(data = hyp_results_comparison, 
-       aes(x = taxon, y = pvalue_diff)) + 
-  geom_point() + 
-  theme_bw(base_size = 10) + 
-  labs(y = "Difference btwn pvals ("~epsilon~"=0.05 -"~epsilon~"=0)",
-       x = "Taxon",
-       title = "P-value differences for all taxa") + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        plot.title = element_text(hjust = 0.5))
+hyp_results_comparison %>%
+  ggplot(aes(x = pvalues_e05, y = pvalues)) +
+  geom_point() +
+  geom_abline() +
+  xlab("happi pvalues with "~epsilon~"=0.05") +
+  ylab("happi pvalues with "~epsilon~"=0") + 
+  xlim(c(0,1)) + 
+  ylim(c(0,1))
 
 # Here we can see that many of our p-values are very similar when we change epsilon. However
 # there are a few taxa for which the p-value changes by up to 0.2, and one taxon for which
-# the p-value increases by more than 0.5. Let's look closer at Phylum MVP-21. 
+# the p-value increases by more than 0.5. Let's find which taxon this change in p-value is 
+# coming from. 
+
+hyp_results_comparison %>% 
+  filter(pvalues_e05 > 0.5 & pvalues < 0.25)
+
+# These results are coming from Phylum MVP-21. Let's look closer at this Phylum! 
 
 hyp_results_comparison %>%
   filter(taxon == "MVP-21")
@@ -365,26 +391,6 @@ ggplot(soil_df, aes(x = seq_depth, y = `MVP-21`, col = soil_add)) +
 # falsing observing a taxon, our p-value for the relationship between soil additives and 
 # the presence of MVP-21 increases because we are accounting for the possibility of erroneously
 # observing MVP-21 in the 4 samples that we observed them in. 
-
-ggplot(data = hyp_results_comparison, 
-       aes(x = taxon, y = beta0_diff)) + 
-  geom_point() + 
-  theme_bw(base_size = 10) + 
-  labs(y = "Difference btwn intercepts ("~epsilon~"=0.05 -"~epsilon~"=0)",
-       x = "Taxon",
-       title = "Intercept estimates differences for all taxa") + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        plot.title = element_text(hjust = 0.5))
-
-ggplot(data = hyp_results_comparison, 
-       aes(x = taxon, y = beta1_diff)) + 
-  geom_point() + 
-  theme_bw(base_size = 10) + 
-  labs(y = "Difference btwn coef ests ("~epsilon~"=0.05 -"~epsilon~"=0)",
-       x = "Taxon",
-       title = "Coefficient estimates differences for all taxa") + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        plot.title = element_text(hjust = 0.5))
   
 # This is a case where doing a sensitivity analysis is a great idea! It shows us that while
 # the results for most taxa are robust to a change in epsilon, that is not the case for 
@@ -398,14 +404,14 @@ ggplot(data = hyp_results_comparison,
 # --------------------- Final Notes -------------------------
 # - `happi` can be used for testing for gene presence in pangenomes (this is its primary 
 #    objective).
-# - `happi` can be extended for use when testing for gene presence between metagenomes of 
-#    varying quality (e.g., sequencing depth)
-# - `happi` currently can only take in 1 quality variable but we are prioritizing incorporation 
-#    of multiple quality variables
+# - `happi` can be used when testing for gene presence between metagenomes of varying quality 
+#    (e.g., sequencing depth)
+# - `happi` can be used with multiple quality variables - let us know if you want this and 
+#    we'll talk to you about it! 
 # - If you have additional questions or issues with using `happi` please open an issue on our 
 #    GitHub https://github.com/statdivlab/happi
 
-# Finally, please cite this work if you use `happi`! 
+# If you find happi useful for your work, please consider citing
 # Pauline Trinh, David S. Clausen, and Amy D. Willis. happi: a hierarchical approach to 
 # pangenomics inference. bioRxiv e-prints, April 2022.
 
