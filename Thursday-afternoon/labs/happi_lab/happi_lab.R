@@ -313,8 +313,8 @@ prausnitzii_hyp_results_comparison %>%
   ggplot(aes(x = pvalue_prausnitzii_e05, y = pvalue_prausnitzii)) +
   geom_point() +
   geom_abline() +
-  xlab("happi pvalues with "~epsilon~"=0)") +
-  ylab("happi pvalues with "~epsilon~"=0.05")
+  xlab("happi pvalues with "~epsilon~"=0.05)") +
+  ylab("happi pvalues with "~epsilon~"=0")
 # So we see that these results are pretty robust to these choices of epsilon.
 
 # By conducting this sensitivity analysis, 
