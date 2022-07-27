@@ -165,7 +165,7 @@ happi_results <- happi(outcome=isomerase$`L-rhamnose isomerase`,
 # Let's look  at our results! 
 # ** note that the p-value results are stored in a vector (happi_results$loglik$pvalue) that is the length of 
 # the number of max_iterations you specified. If the algorithm reaches the change_threshold requirements 
-# before the max_iterations, this will result in a lot of NAs at the end because the algorithm completes earlier. 
+# before the max_iterations (i.e., converges sooner), this will result in a lot of NAs at the end because the algorithm completes earlier. 
 # The final p-value result is the last element of happi_results$loglik$pvalue before the trailing NAs. 
 # In this particular example that would be element 42 as can be seen using happi_results$loglik$pvalue[42] or...
 
@@ -174,9 +174,12 @@ happi_results$loglik$pvalue %>% tibble() %>% filter(!is.na(.)) %>% tail(1)
 # We see that the p-value we get from `happi` is p = 0.169 and that this p-value is 
 # larger than the p-value (p = 0.07) we got using GLM + Rao when we didn't account for mean coverage. 
 
-# We think this is great! In  situations where  the pattern of detection or non-detection 
-# could be attributable to genome quality, we think statements about significance should be moderated. 
-# In this case we want to see larger p-values! 
+# Recall from our picture that this gene was more detected in higher-converage
+# samples. happi gives a larger p-value (less evidence for a difference in presence
+# between groups) because the pattern of detection or non-detection 
+# could be attributable to genome quality. So we think happi is doing a good thing
+# here -- by saving you from getting excited by a signature attributable to 
+# coverage, not biology. 
 
 # If we want to get the beta estimates from happi we can run the following: 
 
@@ -186,7 +189,7 @@ happi_results$beta %>% tibble() %>% drop_na() %>% tail(1)
 # <dbl> <dbl>
 # -0.504  2.77
 # and we see that our estimates are -0.504 for our intercept beta_0
-# and our estimate for beta_1 which corresponds to our main predictor of interest is 2.77 
+# and our estimate for beta_1 which corresponds to our predictor of interest is 2.77 
 # Based on our results, we see that the gene encoding for L-rhamnose isomerase is more enriched in 
 # F. prausnitzii MAGs found in farm workers but that this difference is not significant at the 5% significance level (p = 0.169). 
 
@@ -224,7 +227,9 @@ run_happi_prausnitzii <- function(colnum) {
 # and a change threshold of 0.01 
 
 # To run happi in parallel: 
-prausnitzii_results <- mclapply(3:52, run_happi_prausnitzii, mc.cores=6) # this should only take about a minute or two to finish running... 
+prausnitzii_results <- mclapply(3:52, run_happi_prausnitzii, mc.cores=6) 
+# this should only take about a minute or two to finish running... 
+
 # 3:52 denotes the COG functions I want to run from columns 3 - 52 
 # run_happi_prausnitzii is the function we created above 
 # and mc.cores allows me to specify how many cores I want to allocate to this computational task 
@@ -248,17 +253,32 @@ head(prausnitzii_hyp_results)
 #  - beta_prausnitzii[, 1]: the estimate for beta0 that corresponds to our intercept 
 #  - beta_prausnitzii[, 2]: the estimate for beta1 that corresponds to our primary covariate (farm_worker)
 
-### Remember to choose your favorite FDR or FWER method to address multiple comparisons! 
+# From here, you can 
+# 1. choose your favorite FDR or FWER method to address multiple comparisons! 
+#     e.g., with the qvalue::qvalue (you can get this with install.packages("BiocManager") and 
+#           BiocManager::install("qvalue")), then as follows
+# prausnitzii_hyp_results %>%
+#   mutate(qvalue = qvalue::qvalue(pvalue_prausnitzii, 0.05))
+#     Note that this won't work well with only 50 genes (qvalue needs more hypotheses
+#    to well-estimate the proportion of true null hypotheses)... but it should work 
+#    great with a typical metagenome study, which will contain thousands of samples
+# 2. Look at genes that are significant. Even if nothing is highly significant, you 
+#    can look at what genes were most differentially present across your environmental
+#    types. 
+# 3. (Optional) Get excited about your biology!
 
 
 # --------------------- Sensitivity analyses using epsilon  -------------------------
 
-# We can also change the value of epsilon which is defined as the probability of observing a gene 
-# given that it shouldn't be present aka the probability of "contamination" of our genomes from other genomes. 
-# We might be interested in trying different values of epsilon to assess the robustness of our results 
+# happi has a hyperparameter epsilon, which is the probability of observing a gene 
+# given that it shouldn't be present. This can usually be thought of as 
+# "contamination" of our genes in our genomes from genes in other genomes. 
+# We are interested in trying different values of epsilon to assess the robustness of our results 
 # to varying levels of contamination in our genomes. 
 
-# For this set of 50 COG functions let's try setting epsilon = 0.05 and compare with our results when epsilon = 0
+# For this set of 50 COG functions let's try setting epsilon = 0.05 
+# (i.e., the chance of a false gene "detection" is 5%)
+# and compare with our results when epsilon = 0
 
 x_matrix_prausnitzii <- model.matrix(~farm_worker, data = prausnitzii_data)
 
@@ -289,41 +309,27 @@ prausnitzii_hyp_results_comparison <- tibble("gene" = colnames(prausnitzii_data)
          beta0_diff = round(as.numeric(`beta_prausnitzii_e05[, 1]`) - as.numeric(`beta_prausnitzii[, 1]`), 3), 
          beta1_diff = round(as.numeric(`beta_prausnitzii_e05[, 2]`) - as.numeric(`beta_prausnitzii[, 2]`), 3)) 
 
-# We can visualize the differences in p-values, beta0, and beta1 between happi results when using epsilon = 0 and epsilon = 0.05 
-# We're going to do some data wrangling to get our data into long format for plotting 
-prausnitzii_compare_epsilon_plot <- prausnitzii_hyp_results_comparison %>% 
-  tibble::rownames_to_column("geneID") %>% # change long names to shorten ID 
-  select(geneID, pvalue_diff, beta0_diff, beta1_diff)  %>% 
-  pivot_longer(!geneID, names_to = "value_type", values_to = "e05-e0_difference")
-
-# Let's now plot the absolute differences of the pvalues, beta0s, and beta1s from 
-# out happi results when epsilon = 0 and epsilon = 0.05 
-ggplot(prausnitzii_compare_epsilon_plot, aes(x = geneID, y = `e05-e0_difference`, group = value_type)) + 
-  geom_point(aes(color = value_type), size = 4, alpha = 0.6) + 
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.title=element_blank()) + 
-  ylab("Difference btwn results ("~epsilon~"=0.05 -"~epsilon~"=0)")
-
-# On the y-axis we see the differences between happi results when we set epsilon = 0.05 and epsilon = 0. 
-# On the x-axis we index our gene IDs. 
-
-# It looks like increasing epsilon = 0.05 had the largest impact on the estimates for beta0. Specifically, setting  
-# epsilon = 0.05 resulted in smaller estimates of beta0 than when epsilon = 0. These differences were between 0.05-0.075. 
-# Differences between beta1 when epsilon = 0.05 vs. epsilon = 0 was generally < 0.025
-# Differences between pvalues when epsilon = 0.05 vs. epsilon = 0 was < 0.0125 
+prausnitzii_hyp_results_comparison %>%
+  ggplot(aes(x = pvalue_prausnitzii_e05, y = pvalue_prausnitzii)) +
+  geom_point() +
+  geom_abline() +
+  xlab("happi pvalues with "~epsilon~"=0)") +
+  ylab("happi pvalues with "~epsilon~"=0.05")
+# So we see that these results are pretty robust to these choices of epsilon.
 
 # By conducting this sensitivity analysis, 
 # we can feel more confident about the robustness of our results to things like contamination 
 # for genes that had small changes in the estimates and p-values. If we wanted to 
 # comprehensively understand the robustness of our results to varying degrees of contamination
-# we could continue to dial up or dial down values of epsilon (probability between 0 and 1 of observing a gene given that it should be absent) 
+# we could continue to dial up or dial down values of epsilon 
+# (probability between 0 and 1 of observing a gene given that it should be absent) 
 # and see what happens to our results as epsilon increases! 
 
 
 # --------------------- Final Notes -------------------------
-# - `happi` can be extended for use when testing for gene presence between metagenomes of varying quality (e.g., sequencing depth)
-# - `happi` currently can only take in 1 quality variable but we are prioritizing incorporation of multiple quality variables
+# - `happi` can be used when testing for gene presence between metagenomes of varying quality (e.g., sequencing depth)
+# - `happi` can be used with multiple quality variables - let us know if you want this and we'll talk to you about it! 
 # - If you have additional questions or issues with using `happi` please open an issue on our GitHub https://github.com/statdivlab/happi
 
-# Finally, please cite our work if you use `happi`! 
+# If you find happi useful for your work, please consider citing
 # Pauline Trinh, David S. Clausen, and Amy D. Willis. happi: a hierarchical approach to pangenomics inference. bioRxiv e-prints, April 2022.
