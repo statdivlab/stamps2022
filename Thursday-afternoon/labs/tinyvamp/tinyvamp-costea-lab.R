@@ -1,13 +1,17 @@
+## happi lab - STAMPS 2022 
+## David Clausen, Sarah Teichman, Amy Willis 
+## Thursday 28 July 2022 
+
 ### This lab examines a sequencing experiment performed by Costea et al.
 ### (2017) [1] and subsequently analyzed by McLaren et al. (2019) [2]. Briefly,
 ### the data we'll look at in this lab consists of output
 ### from shotgun sequencing of fecal specimens collected from 10 unique
-### study participants. Each specimen was split into three samples
-### which were sequenced according to one of three protocols (labeled
+### study participants. Each specimen was split into three samples. 
+### The samples were sequenced according to one of three protocols (labeled
 ### H,Q, and W).
 
 ### Before each sample was sequenced, a mock
-### community containing 10 bacterial species was spiked into it.
+### community containing 10 bacterial species (non-fecal species) was spiked into it.
 ### In addition to sequencing data, Costea et al. (2017) published
 ### flow cytometry measurements taken on each of the bacterial isolates
 ### combined to create this mock community. Our focus in this lab is how
