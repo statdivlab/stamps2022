@@ -1,18 +1,22 @@
+## happi lab - STAMPS 2022 
+## David Clausen, Sarah Teichman, Amy Willis
+## Thursday 28 July 2022
+
 ### This lab examines a sequencing experiment performed by Costea et al.
 ### (2017) [1] and subsequently analyzed by McLaren et al. (2019) [2]. Briefly,
 ### the data we'll look at in this lab consists of output
 ### from shotgun sequencing of fecal specimens collected from 10 unique
-### study participants. Each specimen was split into three samples
-### which were sequenced according to one of three protocols (labeled
+### study participants. Each specimen was split into three samples.
+### The samples were sequenced according to one of three protocols (labeled
 ### H,Q, and W).
 
 ### Before each sample was sequenced, a mock
-### community containing 10 bacterial species was spiked into it.
+### community containing 10 bacterial species (non-fecal species) was spiked into it.
 ### In addition to sequencing data, Costea et al. (2017) published
 ### flow cytometry measurements taken on each of the bacterial isolates
 ### combined to create this mock community. Our focus in this lab is how
 ### shotgun-sequencing-based estimates of relative abundance within this
-### mock community compare to (presumably more accurate) estimates based on
+### mock community compare to estimates based on
 ### flow cytometry.
 
 # [1] Costea, Paul I., et al.
@@ -37,7 +41,7 @@ library(tidyverse)
 #  install.packages("remotes") # check that remotes is installed
 
 # Install tinyvamp using remotes and build vignettes:
-#remotes::install_github("https://github.com/statdivlab/tinyvamp")
+# remotes::install_github("https://github.com/statdivlab/tinyvamp")
 
 library(tinyvamp)
 
@@ -182,6 +186,7 @@ measurements_with_metadata %>%
   labs(fill = "Species")
 
 ### What seems to be over-represented? Under-represented?
+### A tide pod for whoever can tell us first!
 
 ### Another view of this
 measurements_with_metadata %>%
@@ -213,7 +218,7 @@ measurements_with_metadata %>%
 ### Note that each protocol gives fairly consistent results on
 ### this mock community -- within-protocol technical variation
 ### is low! But none of them accurately reflect our flow cytometry
-### data (which we are taking as a standard)
+### data, which we are taking as a standard.
 
 ### A brief digression... let's talk a bit about bias and variance.
 ### This is on the relative abundance scale -- scale *really* matters when we're
@@ -259,7 +264,7 @@ measurements_for_bias_figure %>%
   scale_y_log10() +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ylab("Within-protocol Variance of Estimated Relative Abundances") +
+  ylab("Within-protocol Variance of\nEstimated Relative Abundances") +
   xlab("Species")
 
 # ~~~~****Technical variation is pretty low!****~~~~
@@ -326,7 +331,7 @@ measurements_for_bias_figure %>%
                 color= Protocol)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ylab("Ratio: metaPhlan2 proportions over flow cytometry proportions") +
+  ylab("Ratio: metaPhlan2 proportions\nover flow cytometry proportions") +
   geom_abline(aes(slope = 0, intercept = 0),
               linetype = 2) +
   scale_y_log10()
@@ -340,9 +345,9 @@ measurements_for_bias_figure %>%
 
 
 ### Using tinyvamp to estimate "catchability" across taxa and protocols
-# I'm going to assert without a huge amount of proof that the phenomenon
-# we are observing in the Costea data above is differing levels of "catchability"
-# in differing taxa -- i.e., that under each protocol, some microbes are easier
+
+# We can think of this phenomenon as differing levels of "catchability"
+# of taxa for different protocols -- i.e., that under each protocol, some microbes are easier
 # to detect than others. This results in multiplicative over- and under-detection
 # of differing taxa under each protocol. We'll refer to this over/under-detection
 # as a "detection effect."
@@ -475,19 +480,16 @@ colnames(full_model$B) <- colnames(W) #label effects by taxon
 
 # Now we can exponentiate B to get more interpretable results:
 round(exp(full_model$B),2)
-# We interpret the estimate for B. hansenii to indicate that
+# We interpret the estimate for B. hansenii (of 0.2) to indicate that
 # under protocol H, if we sequence a specimen consisting of equal
 # parts Y. pseudotuberculosis and B. hansenii (as measured by flow cytometry),
 # we will on average
-# observe 0.2 B. hansenii reads for each Y. pseudotuberculosis read
-# (or, more or less equivalently, we can say that the ratio of 1) the MetaPhlan2
-# estimate of relative abundance in B. hansenii to 2) the estimate of
-# relative abundance in Y. pseudotuberculosis will on average be
-# 1/5 as large as the ratio of true relative abundances)
+# observe 0.20 B. hansenii reads for each Y. pseudotuberculosis read
 
 # On the other hand, we estimate that under protocol H, we will observe
-# about 65 P melanogenica reads for each Y. pseudotuberculosis read
+# about 65 P. melanogenica reads for each Y. pseudotuberculosis read
 # if we sequence an even mixture of these two species
+
 # Does this align with what you see in the plots we produced earlier in
 # this lab?
 
@@ -712,5 +714,3 @@ rbind(full_cv_predictions,
 # types of error (like contamination or misclassification of taxa), so
 # it is in general important to consider how measurement error might impact
 # results of a microbiome data analysis.
-
-
