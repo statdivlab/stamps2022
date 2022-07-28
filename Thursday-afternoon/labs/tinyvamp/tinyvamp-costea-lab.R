@@ -28,8 +28,18 @@
 
 library(tidyverse)
 library(magrittr)
-library(remotes)
-remotes::install_github("https://github.com/statdivlab/tinyvamp")
+
+# Because we're working on the RStudio Server, we already have `tinyvamp` installed. However,
+# if you're working at home, uncomment the follow lines and run them in your console (not in
+# this script).
+
+# To install: 
+#if (!require("remotes", quietly = TRUE))
+#  install.packages("remotes") # check that remotes is installed
+
+# Install tinyvamp using remotes and build vignettes: 
+#remotes::install_github("https://github.com/statdivlab/tinyvamp")
+
 library(tinyvamp)
 
 #download the data we need
