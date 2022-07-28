@@ -549,11 +549,11 @@ for(whichfoldout in 1:10){
                         max_barrier = 1e12, #maximum value of barrier_t
                         initial_conv_tol = 1000,
                         final_conv_tol = 0.1,
-                        final_f = 1e-6,
+                        # final_f = 1e-6,
                         constraint_tolerance = 1e-10,
                         hessian_regularization = 0.01,
                         criterion = "Poisson",
-                        subproblem_method = "Newton",
+                        # subproblem_method = "Newton",
                         profile_P = FALSE,
                         profiling_maxit = 25,
                         wts = NULL,
