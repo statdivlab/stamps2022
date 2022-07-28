@@ -21,6 +21,11 @@
 # of genomes that each contain all of our genes of interest, covering much of the 
 # breadth of the Prevotella genus as well as a variety of genes.
 
+# We curated this set of genes and genomes using functionality implemented in
+# GToTree and another one of Mike's collections of useful tools, bit:
+# https://github.com/AstrobioMike/bit 
+# https://f1000research.com/articles/11-122/v1
+
 # ------------------------------ Loading packages -------------------------------
 
 # To analyze trees, we'll use the packages `ape` and `ggtree`.
@@ -29,9 +34,6 @@
 library(ape)
 # only run this command once in the console if `ggtree` is not yet installed
 #if (!require("remotes", quietly = TRUE)) {
-# check that remotes is installed
-#  install.packages("BiocManager") 
-#}
 #library(BiocManager)
 #BiocManager::install("ggtree")
 library(ggtree)
@@ -39,6 +41,9 @@ library(ggtree)
 # Because we're working on the RStudio Server, we already have `grove` installed. 
 # However, if you're working at home, uncomment the follow lines and run them in 
 # your console (not in this script).
+# check that remotes is installed
+#  install.packages("remotes") 
+#}
 #remotes::install_github("statdivlab/grove")
 
 # We'll start with the output from GToTree, which includes a 
@@ -73,16 +78,93 @@ library(ggtree)
 # For our purposes, I've already done all of these steps. We can load in the
 # phylogenomic tree and the set of gene trees. 
 
+# Phylogenomic trees
 
+phy_genom <- read.tree("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/phy_genom.txt")
 
+# Let's look at our tree object! What information does it have?
+# You can use the $ operator to see what information is saved within the object
+# phy_genom
 
+phy_genom
 
+# A phylo object contains the following: 
+# edge: a list of branches that connect one node of the tree to another
+# edge.length: a list of branch lengths for each branch 
+# Nnode: the number of internal nodes on the tree, these represent ancestor organisms
+# tip.label: a vector of names of tips (in our case, genomes)
 
+# We can plot our tree using ggtree (this is a very cool plotting package that 
+# extends ggplot2 for phylogenetic trees). 
 
+ggtree(phy_genom) + 
+  geom_tiplab(size = 2)
 
+# Gene trees 
 
+gene_trees <- read.tree("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/gene_trees.txt")
 
+# Let's take a look at our gene trees
 
+gene_trees
+
+# Here we can see that this is a set of 63 phylogenetic trees. If we want to look
+# at a specific gene tree, we can use the `[[]]` subsetting operator.
+
+gene_trees[[1]]
+
+# We can also plot any of our gene trees.
+
+ggtree(gene_trees[[1]]) + 
+  geom_tiplab(size = 2)
+
+# What do we notice? 
+# This tree looks different than the phylogenomic tree! Actually, it turns
+# out that the topology (branching structure) is slightly different between each
+# gene tree and between the gene trees and phylogenomic tree. 
+
+# The last thing we need to load in is a list of our gene names. We can do this 
+# with: 
+
+gene_names <- as.character(read.delim("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/gene_names.txt", 
+                                      header = FALSE)$V1)
+
+# -------------------- Building ordination plot ---------------------------------
+
+# First we need a vector that contains the pathways to each of our individual
+# gene trees. We'll use the function paste0, which combines two strings together
+# into one string.
+
+pathways <- paste0("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/",
+                   gene_names, ".txt")
+
+#-------
+vectors <- compute_logmap(cons_path = "https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/phy_genom.txt", 
+                          tree_paths = pathways,
+                          add_pendant_branches = TRUE,
+                          cons_tree = phy_genom,
+                          trees_complete = c(phy_genom, trees))
+
+other_paths <- paste0("Friday-morning/labs/gene_tree_lab/data/trees_txt/", 
+                      gene_names, ".txt")
+# this one works! 
+vectors <- compute_logmap(cons_path = "Friday-morning/labs/gene_tree_lab/data/trees_txt/phy_genom.txt", 
+                          tree_paths = other_paths,
+                          add_pendant_branches = TRUE,
+                          cons_tree = phy_genom,
+                          trees_complete = c(phy_genom, gene_trees))
+
+vectors <- compute_logmap(cons_path = "https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/phy_genom.txt", 
+                          tree_paths = other_paths,
+                          add_pendant_branches = TRUE,
+                          cons_tree = phy_genom,
+                          trees_complete = c(phy_genom, gene_trees))
+#-------------
+lm_res <- plot_logmap(vectors = vectors, 
+                      base_name = base_name, 
+                      gene_names = gene_names,
+                      cons_exists = FALSE)
+lm_res$plot
 
 
 
