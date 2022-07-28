@@ -118,7 +118,7 @@ soil_df <- pres_mat %>%
   mutate(soil_add = as.factor(ifelse(sample_data(soil)$Amdmt == 0, 0, 1)))
   
 # Finally, we need information about sampling depth. For each sample, we'll 
-# record the number of reads across all taxa in that sample. 
+# record the number of total reads across all taxa in that sample. 
 
 soil_df <- soil_df %>%
   mutate(seq_depth = colSums(as.data.frame(otu_table(soil))))
@@ -133,11 +133,12 @@ sum(soil_df[, "Tenericutes"])
 # let's subset our data to only consider Tenericutes
 
 tnct_df <- soil_df %>%
-  select(Tenericutes, soil_add, seq_depth)
+  select(Tenericutes, soil_add, seq_depth) %>%
+  mutate("Type" = ifelse(soil_add == 1, "Unamended", "Amended"))
 
 # Let's plot the relationship between these variables. 
 
-ggplot(tnct_df, aes(x = seq_depth, y = Tenericutes, col = soil_add)) + 
+ggplot(tnct_df, aes(x = seq_depth, y = Tenericutes, col = Type)) + 
   geom_jitter(height = 0.08, width = 0.00) + 
   theme_bw() + 
   labs(x = "Sequencing Depth",
@@ -160,8 +161,8 @@ h0 <- glm(Tenericutes ~ 1, family="binomial", data = tnct_df)
 anova(ha, h0, test = "Rao")[2, "Pr(>Chi)"]
 
 # We get a p-value of 0.011. This means that if our alpha level is at 0.05, we can reject
-# our null hypothesis that there is no relationship between the presence/absence of 
-# Tenericutes and the presence of soil amendments. 
+# the null hypothesis that the odds that Tenericutes is present is 
+# equal when comparing amended and unamended soils. 
 
 # However, we know that this approach does not account for sequencing depth. Let's test 
 # again with happi, adding in our sequencing depth information. 
@@ -172,8 +173,7 @@ x_matrix <- model.matrix(~soil_add, data = tnct_df)
 
 # the main function we'll be using is happi() which has various options that you can specify 
 # We'll describe a few here but to see the full list of available options you can run: 
-
-?happi 
+# ?happi
 
 # The main options we'll use to run happi() include: 
 #  - outcome: Your gene presence/absence variable that needs to be coded as 0 or 1
@@ -213,24 +213,25 @@ happi_results <- happi(outcome = tnct_df$Tenericutes,
 
 happi_results$loglik$pvalue %>% tibble() %>% filter(!is.na(.)) %>% tail(1)
 
-# Our p-value here is 0.036. In this case, at an alpha level of 0.05, we are still able to 
+# Our p-value here is 0.036. In this case, at an alpha level of 0.05, we still able to 
 # reject the null hypothesis. However, the strength of our evidence against the null hypothesis
 # is lower (a higher p-value) because we've now accounted for different sequencing depth in our
 # model. 
 
 # Recall from our picture that this taxon was less detected in lower sequencing depth samples.
-# happi gives a larger p-value (less evidence for a difference in presence between groups) 
+# happi gives a larger p-value (less evidence for a difference in odds of presence across groups) 
 # because the pattern of detection or non-detection could be attributable to genome quality. 
 # So we think happi is doing a good thing here -- by saving you from getting excited by a 
-# signature attributable to sequencing depth, not biology. 
+# signature attributable to sequencing depth, not biology... though in this case, if we
+# set out to explore Tenericutes, we'd probably still be excited. 
 
-# If we want to get the beta estimates from happi we can run the following: 
+# If we want to get the coefficient estimates from happi we can run the following: 
 
 happi_results$beta %>% tibble() %>% drop_na() %>% tail(1)
 
 # and we see that our estimates are 1.46 for our intercept beta_0 and our estimate for beta_1 
 # which corresponds to the presence of soil amendments is -1.08. Based on our results, we see 
-# that Tenericutes is less likely to be present in soil that has amendments, and this difference is 
+# that Tenericutes is less likely to be present in soil that is amended, and this difference is 
 # not significant at the 5% significance level (p = 0.036). 
 
 # ----------------- But what if I want to consider all of my taxa? -------------------------
@@ -303,7 +304,7 @@ head(hyp_results)
 #           BiocManager::install("qvalue")), then as follows
 # all_taxa_hyp_results %>%
 #   mutate(qvalue = qvalue::qvalue(pvalues, 0.05))
-#     Note that this won't work well with only 39 taxa (qvalue needs more hypotheses
+#     Note that this won't work well with only 39 phyla (qvalue needs more hypotheses
 #    to well-estimate the proportion of true null hypotheses)... but it should work 
 #    great at a finer taxonomic level when you have thousands of taxa. 
 # 2. Look at taxa that are significant. Even if nothing is highly significant, you 
@@ -396,7 +397,7 @@ ggplot(soil_df, aes(x = seq_depth, y = `MVP-21`, col = soil_add)) +
   
 # This is a case where doing a sensitivity analysis is a great idea! It shows us that while
 # the results for most taxa are robust to a change in epsilon, that is not the case for 
-# MVP-21.
+# MVP-21 -- because this phylum was only detected in high depth samples. 
 
 # If we wanted to comprehensively understand the robustness of our results to varying degrees 
 # of contamination we could continue to dial up or dial down values of epsilon (probability 
