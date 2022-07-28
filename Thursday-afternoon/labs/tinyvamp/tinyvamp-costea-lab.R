@@ -42,7 +42,7 @@ library(magrittr)
 #  install.packages("remotes") # check that remotes is installed
 
 # Install tinyvamp using remotes and build vignettes:
-#remotes::install_github("https://github.com/statdivlab/tinyvamp")
+# remotes::install_github("https://github.com/statdivlab/tinyvamp")
 
 library(tinyvamp)
 
