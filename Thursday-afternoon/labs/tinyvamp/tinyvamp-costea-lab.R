@@ -32,6 +32,12 @@ library(remotes)
 remotes::install_github("https://github.com/statdivlab/tinyvamp")
 library(tinyvamp)
 
+#download the data we need
+download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_metaphlan2_profiles.rda",
+              "costea2017_metaphlan2_profiles.rda")
+download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_mock_composition.rda")
+download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_sample_data.rda")
+
 ### And load data as well
 load("costea2017_metaphlan2_profiles.rda") # MetaPhlan2 profiles produced by
                                            # McLaren et al. (2019) from
