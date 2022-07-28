@@ -109,11 +109,22 @@ pres_mat <- as.data.frame(t(pres_mat))
 
 names(pres_mat) <- tax_table(soil)[,2]
 
+# We will add the sample names as a separate column 
+
+pres_mat <- pres_mat %>%
+  mutate(sample_name = row.names(pres_mat))
+
 # Next, we'll add our covariate of interest, `Amdmt`. We are going to collapse the levels
 # of soil additives down to just two, 0 for no additives and 1 for additives. 
 
-soil_df <- pres_mat %>% 
-  mutate(soil_add = as.factor(ifelse(sample_data(soil)$Amdmt == 0, 0, 1)))
+sample_data_lab <- row.names(sample_data(soil))
+
+covar_df <- data.frame(sample_data(soil)) %>%
+  mutate(sample_name = sample_data_lab,
+         soil_add = as.factor(ifelse(sample_data(soil)$Amdmt == 0, 0, 1))) %>%
+  select(sample_name, soil_add)
+
+soil_df <- inner_join(pres_mat, covar_df, by = "sample_name")
   
 # Finally, we need information about sampling depth. For each sample, we'll 
 # record the number of reads across all taxa in that sample. 
