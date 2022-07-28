@@ -45,6 +45,7 @@ library(ggtree)
 #  install.packages("remotes") 
 #}
 #remotes::install_github("statdivlab/grove")
+library(grove)
 
 # We'll start with the output from GToTree, which includes a 
 # phylogenomic tree and gene level alignments. To ask GToTree to 
