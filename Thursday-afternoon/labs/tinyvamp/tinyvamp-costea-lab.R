@@ -51,20 +51,20 @@ library(tinyvamp)
 #               "costea2017_sample_data.rda")
 #
 # ### And load data as well
-# load("costea2017_metaphlan2_profiles.rda") # MetaPhlan2 profiles produced by
+load("costea2017_metaphlan2_profiles.rda") # MetaPhlan2 profiles produced by
 #                                            # McLaren et al. (2019) from
 #                                            # Costea et al. (2017) raw read data
 #
-# write.csv("costea2017_metaphlan2_profiles",
-#           "costea2017_metaphlan2_profiles.csv")
+write.csv(costea2017_metaphlan2_profiles,
+          "costea2017_metaphlan2_profiles.csv")
 #
 #
 # load("costea2017_mock_composition.rda") # flow cytometry data from Costea et al.
-# write.csv("costea2017_mock_composition",
-#           "costea2017_mock_composition.csv")
+write.csv(costea2017_mock_composition,
+          "costea2017_mock_composition.csv")
 # load("costea2017_sample_data.rda") # sample metadata
-# write.csv("costea2017_sample_data",
-#           "costea2017_sample_data.csv")
+write.csv(costea2017_sample_data,
+          "costea2017_sample_data.csv")
 
 ### Let's take a look at 'costea2017_metaphlan2_profiles'
 head(costea2017_metaphlan2_profiles)
