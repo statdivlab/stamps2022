@@ -1,4 +1,4 @@
-## happi lab - STAMPS 2022 
+## happi lab - STAMPS 2022
 ## David Clausen, Sarah Teichman, Amy Willis
 ## Thursday 28 July 2022
 
@@ -700,14 +700,14 @@ rbind(full_cv_predictions,
 # won't be misleading.
 
 # As well, some analytical methods are more robust to detection effects
-# than others. In general, "compositional data methods" are more robust to detection 
+# than others. In general, "compositional data methods" are more robust to detection
 # effects than those that estimate relative abundance. At the same time,
 # these methods generally make fairly restrictive assumptions on taxon
 # presence (usually all taxa are assumed to be truly present in every sample,
 # which may not be realistic in a variety of settings --
 # in other cases, such as ANCOM-II, it is assumed that we can identify which
-# taxa are present in which sample... which also may be hard because of 
-# contamination). radEmu was specifically designed to be robust to detection
+# taxa are present in which sample... which also may be hard because of
+# contamination and taxa truly present in low abundance). radEmu was specifically designed to be robust to detection
 # effects and does not assume all taxa are present in every sample... so yeah.
 # With all of this said, none of these methods have been demonstrated to be
 # robust to measurement error that includes detection effects *and* other
