@@ -1,5 +1,5 @@
 ## happi 16s lab - STAMPS 2022 
-## Pauline Trinh, David Clausen, Sarah Teichman, Amy Willis 
+## Sarah Teichman, Pauline Trinh, David Clausen, Amy Willis 
 ## Thursday 28 July 2022 
 
 # --------------------- Introduction -------------------------
@@ -7,14 +7,16 @@
 # In the `happi_lab`, we learned about using `happi` for modeling gene presence while
 # accounting for differences in genome quality. 
 
-# It turns out that we can also use `happi` to model taxon presence while accounting for
-# differences in genome quality! This lets us apply `happi` to our amplicon data as well as 
-# shotgun. Happi news for those of you who use amplicon data! 
+# We can also use `happi` to model taxon presence while accounting for
+# differences in genome quality! This lets us apply `happi` to
+# amplicon data, looking at presence/absence of ASVs or OTUs.
+# Happi news for those of you who use amplicon data! 
 
 # The hierarchical modeling approach to incorporate genome quality information is flexible,
 # so while it was built for pangenome analysis, it can also be used in this context. 
 # For example, if you were interested in understanding whether *E. coli* genomes are more
-# present in the microbiomes of sea otters compared to narwhals, then `happi` is well-suited
+# present (in any abundance) in the microbiomes of sea otters 
+# compared to narwhals, then `happi` is well-suited
 # to help you answer this question! 
 
 # `happi` models the association between 
@@ -26,7 +28,7 @@
 # --------------------- Installing happi -------------------------
 
 # Because we're working on the RStudio Server, we already have `happi` installed. However,
-# if you're working at home, uncomment the follow lines and run them in your console (not in
+# if you're working at home, uncomment the following lines and run them in your console (not in
 # this script).
 
 # To install: 
@@ -84,7 +86,7 @@ sample_data(soil)[1:3, ]
 
 # We're going to be looking closely at the `Amdmt` variable. 
 
-#  - `Amdmt`: Categorical variable representing one of three soil additives; none (0), 
+#  - `Amdmt`: Categorical variable representing one of three soil amendments; none (0), 
 # biochar (1), and fresh biomass (2), respectively.
 
 # Finally, we have a taxonomy table with 7 taxonomic ranks. 
@@ -92,7 +94,7 @@ sample_data(soil)[1:3, ]
 tax_table(soil)[1:3, ]
 
 # We want to consider the relationship between the presence or absence of each taxon
-# and `Amdmt` (soil additives), while accounting for sequencing depth (this is the 
+# and `Amdmt` (soil amendments), while accounting for sequencing depth (this is the 
 # variable that will give us information about the quality of each sample).
 
 # To start, we want to include presence and absence information for each taxon. We can
@@ -110,7 +112,7 @@ pres_mat <- as.data.frame(t(pres_mat))
 names(pres_mat) <- tax_table(soil)[,2]
 
 # Next, we'll add our covariate of interest, `Amdmt`. We are going to collapse the levels
-# of soil additives down to just two, 0 for no additives and 1 for additives. 
+# of soil amendments down to just two, 0 for no amendments and 1 for amendments. 
 
 soil_df <- pres_mat %>% 
   mutate(soil_add = as.factor(ifelse(sample_data(soil)$Amdmt == 0, 0, 1)))
@@ -139,18 +141,18 @@ ggplot(tnct_df, aes(x = seq_depth, y = Tenericutes, col = soil_add)) +
   geom_jitter(height = 0.08, width = 0.00) + 
   theme_bw() + 
   labs(x = "Sequencing Depth",
-       col = "Additive",
+       col = "Amendment",
        title = "Tenericutes presence by sequencing depth") + 
   theme(plot.title = element_text(hjust = 0.5))
 
 # Here we can see that generally the samples in which Tenericutes is not present have 
-# lower sequencing depth. We can also see more samples with no additives (a value of 0) 
+# lower sequencing depth. We can also see more samples with no amendments (a value of 0) 
 # in which Tenericutes is present. Let's model this relationship! 
 
 # --------------------------- Modeling our data --------------------------------
 
 # We're going to start by running a method to model presence of Tenericutes based on soil
-# additives without account for sequencing depth. We'll do this with a generalized linear
+# amendments without account for sequencing depth. We'll do this with a generalized linear
 # model (GLM) and test for a difference with a Rao score test. 
 
 ha <- glm(Tenericutes ~ soil_add, family="binomial", data = tnct_df)
@@ -159,7 +161,7 @@ anova(ha, h0, test = "Rao")[2, "Pr(>Chi)"]
 
 # We get a p-value of 0.011. This means that if our alpha level is at 0.05, we can reject
 # our null hypothesis that there is no relationship between the presence/absence of 
-# Tenericutes and the presence of soil additives. 
+# Tenericutes and the presence of soil amendments. 
 
 # However, we know that this approach does not account for sequencing depth. Let's test 
 # again with happi, adding in our sequencing depth information. 
@@ -227,8 +229,8 @@ happi_results$loglik$pvalue %>% tibble() %>% filter(!is.na(.)) %>% tail(1)
 happi_results$beta %>% tibble() %>% drop_na() %>% tail(1)
 
 # and we see that our estimates are 1.46 for our intercept beta_0 and our estimate for beta_1 
-# which corresponds to the presence of soil additives is -1.08. Based on our results, we see 
-# that Tenericutes is less likely to be present in soil that has additives, and this difference is 
+# which corresponds to the presence of soil amendments is -1.08. Based on our results, we see 
+# that Tenericutes is less likely to be present in soil that has amendments, and this difference is 
 # not significant at the 5% significance level (p = 0.036). 
 
 # ----------------- But what if I want to consider all of my taxa? -------------------------
@@ -290,7 +292,7 @@ head(hyp_results)
 #  - taxon: contains taxon name (here the Phylum name)
 #  - pvalues: the happi p-values 
 #  - betas[, 1]: the estimate for beta0 that corresponds to our intercept 
-#  - betas[, 2]: the estimate for beta1 that corresponds to our primary covariate (soil additive)
+#  - betas[, 2]: the estimate for beta1 that corresponds to our primary covariate (soil amendment)
 
 # In this case, we see that only the taxon we considered earlier (Tenericutes) is signficiant
 # at the 0.05 alpha level.
@@ -380,7 +382,7 @@ ggplot(soil_df, aes(x = seq_depth, y = `MVP-21`, col = soil_add)) +
   geom_jitter(height = 0.08, width = 0.00) + 
   theme_bw() + 
   labs(x = "Sequencing Depth",
-       col = "Additive",
+       col = "Amendment",
        title = "MVP-21 presence by sequencing depth") + 
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -388,7 +390,7 @@ ggplot(soil_df, aes(x = seq_depth, y = `MVP-21`, col = soil_add)) +
 # that epsilon = 0 there is no probability of observing a taxon when it is not actually there.
 # However, when we set epsilon = 0.05, we say that there is a 5% probability of observing a 
 # taxon given that it shouldn't be present. When we allow for this non-zero probability of 
-# falsing observing a taxon, our p-value for the relationship between soil additives and 
+# falsing observing a taxon, our p-value for the relationship between soil amendments and 
 # the presence of MVP-21 increases because we are accounting for the possibility of erroneously
 # observing MVP-21 in the 4 samples that we observed them in. 
   
