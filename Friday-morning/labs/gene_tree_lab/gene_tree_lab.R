@@ -28,12 +28,16 @@
 
 # ------------------------------ Loading packages -------------------------------
 
-# To analyze trees, we'll use the packages `ape` and `ggtree`.
+# To analyze trees, we'll use the packages `ape`, `plotly` and `ggtree`.
 # only run this command once in the console if `ape` is not yet installed
 #install.packages("ape")
 library(ape)
+
+# only run this command in the console if `plotly` is not yet installed
+#install.packages("plotly")
+library(plotly)
+
 # only run this command once in the console if `ggtree` is not yet installed
-#if (!require("remotes", quietly = TRUE)) {
 #library(BiocManager)
 #BiocManager::install("ggtree")
 library(ggtree)
@@ -76,12 +80,20 @@ library(grove)
 # B.Q. Minhet al. (2020) "IQ-TREE 2: New models and efficient methods for 
 # phylogenetic inference in the genomic era". Mol. Biol. Evol., 37:1530-1534.
 
-# For our purposes, I've already done all of these steps. We can load in the
+# For our purposes, these steps have already been done for you. We can load in the
 # phylogenomic tree and the set of gene trees. 
+
+# Uncomment the following lines and run in your console. This will create a new 
+# folder in your current working directly that has txt files will all of our 
+# trees. 
+
+#download.file("https://github.com/statdivlab/stamps2022/raw/main/Friday-morning/labs/gene_tree_lab/data/trees_txt.zip", 
+#"trees_txt.zip")
+#unzip("trees_txt.zip")
 
 # Phylogenomic trees
 
-phy_genom <- read.tree("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/phy_genom.txt")
+phy_genom <- read.tree("trees_txt/phy_genom.txt")
 
 # Let's look at our tree object! What information does it have?
 # You can use the $ operator to see what information is saved within the object
@@ -103,7 +115,7 @@ ggtree(phy_genom) +
 
 # Gene trees 
 
-gene_trees <- read.tree("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/gene_trees.txt")
+gene_trees <- read.tree("trees_txt/gene_trees.txt")
 
 # Let's take a look at our gene trees
 
@@ -136,125 +148,117 @@ gene_names <- as.character(read.delim("https://raw.githubusercontent.com/statdiv
 # gene trees. We'll use the function paste0, which combines two strings together
 # into one string.
 
-pathways <- paste0("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/",
-                   gene_names, ".txt")
+pathways <- paste0("trees_txt/", gene_names, ".txt")
 
-#-------
-vectors <- compute_logmap(cons_path = "https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/phy_genom.txt", 
-                          tree_paths = pathways,
-                          add_pendant_branches = TRUE,
-                          cons_tree = phy_genom,
-                          trees_complete = c(phy_genom, trees))
+# Now we will run the function `compute_logmap` to approximate all of our trees
+# as vectors in Euclidean space
 
-other_paths <- paste0("Friday-morning/labs/gene_tree_lab/data/trees_txt/", 
-                      gene_names, ".txt")
-# this one works! 
-vectors <- compute_logmap(cons_path = "Friday-morning/labs/gene_tree_lab/data/trees_txt/phy_genom.txt", 
-                          tree_paths = other_paths,
+# the path to the phylogenomic tree, to do our approximation
+# we need a base tree to compare all other trees to, 
+# and we use the phylogenomic tree as the base.
+vectors <- compute_logmap(cons_path = "trees_txt/phy_genom.txt", 
+                          # a vector of paths to all gene trees we want to study
+                          tree_paths = new_paths,
+                          # this lets us consider the lengths of branches to the 
+                          # tips, by default these are not considered but we like
+                          # to consider them because the amount of evolution from
+                          # the most recent common ancestor to the current organism
+                          # may be of biological interest. 
                           add_pendant_branches = TRUE,
+                          # the phylogenomic tree
                           cons_tree = phy_genom,
+                          # a set of trees including the phylogenomic tree and 
+                          # all of the gene trees
                           trees_complete = c(phy_genom, gene_trees))
 
-vectors <- compute_logmap(cons_path = "https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/trees_txt/phy_genom.txt", 
-                          tree_paths = other_paths,
-                          add_pendant_branches = TRUE,
-                          cons_tree = phy_genom,
-                          trees_complete = c(phy_genom, gene_trees))
-#-------------
-lm_res <- plot_logmap(vectors = vectors, 
-                      base_name = base_name, 
-                      gene_names = gene_names,
-                      cons_exists = FALSE)
+# Let's take a quick look at this output
+
+dim(vectors)
+
+# This output has 64 rows (for the phylogenomic tree and 63 gene trees) and 153
+# columns. These 153 columns approximate the information encoded in the topology
+# (branching order) and branch lengths from the set of trees in Euclidean space.
+
+# Next, let's build up our ordination plot. The next function will run PCA (our
+# preferred ordination procedure) and plot the first two principal components.
+# The idea behind this is that we want to visualize our set of trees in two 
+# dimensions in a way that will retain as much variation between the trees as 
+# possible. This let's us get a sense of which trees are more similar, which are
+# more different, and which might be outliers that could be interesting to 
+# investigate.
+
+# The approximation of our trees in Euclidean space
+lm_res <- plot_logmap(vectors = vectors,
+                      # The name of our base tree (we use the phylogenomic
+                      # tree for this)
+                      base_name = "Phylogenomic",
+                      # A vector of gene names
+                      gene_names = gene_names)
+
+# Let's check out our ordination plot. Each point represents a single tree.
+# The phylogenomic tree is shown in red and all other trees are shown in black.
+
 lm_res$plot
 
+# What do you notice from this plot? 
+# I notice a few things here. 
+# (1) The phylogenomic tree is in the middle of the majority of the gene trees.
+# (2) There are two potential outliers in the first principal component. We should
+#     check this out to see if we can tease out why!
+# (3) There is one potential outlier in the second principal component. We should
+#     also check this out! 
 
+# It would be awesome if this plot were interactive and we could mouse over the 
+# points to see which points represent which genes. It turns out we can! `plotly` 
+# is a great visualization package that lets us do this. We can wrap up our ggplot
+# with the command ggplotly and specify the variable that we want to use to label
+# each point.
 
+ggplotly(lm_res$plot, tooltip = "name")
 
+# By mousing over our plot, we can see that the two potential outliers in the 
+# first principal component are GTP_cyclohydroI and DMRL_synthase, and the potential
+# outlier in the second principal component is BacA. 
 
+# ------------------------- Visualizing individual trees -----------------------
 
+# Now that we've visualized all of our trees, we have a few trees that we'd like
+# to investigate. Let's start with GTP_cyclohydroI and DMRL_synthase. 
 
+# First we need to figure out which trees in our `gene_trees` object correspond
+# with these genes. We'll use the function which to give us the indices. 
 
+which(gene_names == "GTP_cyclohydroI")
+which(gene_names == "DMRL_synthase")
 
+# We can start by visualizing GTP_cyclohydroI. 
 
+ggtree(gene_trees[[11]]) + 
+  geom_tiplab(size = 2)
 
+# Here we can see that there is a very long branch connecting the genome with 
+# accession GCA_00239436. More material about this genome could be found here:
+# https://gtdb.ecogenomic.org/genome?gid=GCA_002394365.1 
 
+ggtree(gene_trees[[6]]) + 
+  geom_tiplab(size = 2)
 
+# In DMRL_synthase, we also see a long branch to the same genome. This could help
+# generate hypotheses about the connection between these two genes and this genome.
+# However, this could also be a sign that something unexpected is happening this 
+# genome alignment for these two genes. 
 
+# Next, let's consider the second principal component and BacA. 
 
+which(gene_names == "BacA")
 
-# First, we're going to check which genes were found in which genomes 
-# We'll read in gene_names from the file "gene_names.txt"
+ggtree(gene_trees[[42]]) + geom_tiplab(size = 2)
 
-gene_names <- as.character(read.delim("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/gene_names.txt", 
-                                      header = FALSE)$V1)
+# Here, we see another long branch, but one that separates one large clade of the 
+# tree from the rest. This represents a large amount of evolution between these two
+# sets of genomes. We aren't the biologists (that's all of you!), but it could be
+# worth investigating this gene further to see what is happening between these two
+# group of genomes. 
 
-# Note, in order to run `grove`, you need a complete set of genes and genomes.
-# This means that each gene that you want to investigate needs to have been
-# observed each of your genomes. In practice, this is rarely the case due to 
-# variation in gene presence/absence across taxa and errors in the sequencing 
-# and processing of data. To deal with this, you will need to subsample either 
-# the set of genes or genomes or both to consider a set of genomes that each
-# include all genes. Stay tuned for a tutorial with recommendations on how to 
-# do this! 
-
-# Because we chose the genomes for this analysis specifically so that they would
-# include a set of 63 genes that we would like to examine in Prevotella, we are
-# starting with a set of genomes that include all of our genes of interest. 
-
-# Next, read in the trees. 
-# Start with the phylogenomic tree.
-
-phy_genom <- read.tree("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/tree_files/Prevotella-GToTree-res.tre")
-
-# let's take a look at the phylogenomic tree 
-# with a tree this large, we won't add tip labels for now 
-
-ggtree(phy_genom, size = 0.5) 
-
-# how many tips does this tree have? 
-
-length(phy_genom$tip.label)
-
-# It has 380. This is because the concatenated tree accounts 
-
-# Next, we will load each gene tree into our environment.
-# Gene trees were each generated with the following command line code:
-# IQTree -s $gene_file_name -mset WAG,LG -bb 1000
-# Citation: 
-# B.Q. Minhet al. (2020) "IQ-TREE 2: New models and efficient methods for 
-# phylogenetic inference in the genomic era". Mol. Biol. Evol., 37:1530-1534.
-
-# We want to load each gene tree into our environment. 
-curr_gene <- gene_names[1]
-# read the estimated gene tree (output from IQTree)
-tree <- read.tree(paste0("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/tree_files/",
-                         curr_gene, "_aln.faa.treefile"))
-# remove the node labels from our trees 
-tree$node.label <- NULL
-# save tree in a set of trees
-trees <- tree
-for (i in 2:length(gene_names)) {
-  curr_gene <- gene_names[i]
-  tree <- read.tree(paste0("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/tree_files/",
-                           curr_gene, "_aln.faa.treefile"))
-  tree$node.label <- NULL
-  trees <- c(trees, tree)
-}
-
-# we now have a multiPhylo object containing all of our gene trees
-trees
-
-# look at presence/absence 
-
-# drop tips for phylogenomic tree (if necessary)
-
-# plot phylogenomic tree
-
-# make pca plot 
-
-# identify interesting trees 
-
-# plot trees 
-
-
-
+# If you have any questions or want to talk about using this tool for your own 
+# metagenomics data, please reach out and send me an email at teichs@uw.edu. 
