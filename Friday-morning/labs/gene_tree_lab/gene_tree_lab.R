@@ -158,7 +158,7 @@ pathways <- paste0("trees_txt/", gene_names, ".txt")
 # and we use the phylogenomic tree as the base.
 vectors <- compute_logmap(cons_path = "trees_txt/phy_genom.txt", 
                           # a vector of paths to all gene trees we want to study
-                          tree_paths = new_paths,
+                          tree_paths = pathways,
                           # this lets us consider the lengths of branches to the 
                           # tips, by default these are not considered but we like
                           # to consider them because the amount of evolution from
