@@ -258,7 +258,8 @@ measurements_for_bias_figure %>%
   scale_y_log10() +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ylab("Within-protocol Variance of Estimated Relative Abundances")
+  ylab("Within-protocol Variance of Estimated Relative Abundances") +
+  xlab("Species")
 
 # ~~~~****Technical variation is pretty low!****~~~~
 
