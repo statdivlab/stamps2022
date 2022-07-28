@@ -97,7 +97,7 @@ head(costea2017_mock_composition)
 ### only flow cytometry measurements
 mock_cols <- costea2017_mock_composition$Taxon
 
-mock_mat <- t(as.matrix(costea2017_mock_composition[,-1]))
+mock_mat <- t(as.matrix(costea2017_mock_composition[,-c(1:2)]))
 colnames(mock_mat) <- mock_cols
 
 ### tinyvamp is expecting an observation matrix whose rows are samples
@@ -126,7 +126,7 @@ W_reorder <- sapply(colnames(W), # if you're wondering if there's a simpler way
 
 # and now we'll add that output to W
 W <- rbind(W,
-           costea2017_metaphlan2_profiles_species[W_reorder,-1] %>%
+           costea2017_metaphlan2_profiles_species[W_reorder,-c(1:2)] %>%
              as.matrix() %>%
              t)
 
@@ -258,7 +258,7 @@ measurements_for_bias_figure %>%
   scale_y_log10() +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ylab("Within-protocol Technical Variation")
+  ylab("Within-protocol Variance of Estimated Relative Abundances")
 
 # ~~~~****Technical variation is pretty low!****~~~~
 
