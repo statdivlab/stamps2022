@@ -27,7 +27,6 @@
 ### Let's load libraries we'll need
 
 library(tidyverse)
-library(magrittr)
 
 # Because we're working on the RStudio Server, we already have `tinyvamp` installed. However,
 # if you're working at home, uncomment the follow lines and run them in your console (not in
@@ -42,29 +41,19 @@ library(magrittr)
 
 library(tinyvamp)
 
-#download the data we need
-# download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_metaphlan2_profiles.rda",
-#               "costea2017_metaphlan2_profiles.rda")
-# download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_mock_composition.rda",
-#               "costea2017_mock_composition.rda")
-# download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_sample_data.rda",
-#               "costea2017_sample_data.rda")
-#
 # ### And load data as well
-load("costea2017_metaphlan2_profiles.rda") # MetaPhlan2 profiles produced by
-#                                            # McLaren et al. (2019) from
-#                                            # Costea et al. (2017) raw read data
-#
-write.csv(costea2017_metaphlan2_profiles,
-          "costea2017_metaphlan2_profiles.csv")
-#
-#
-# load("costea2017_mock_composition.rda") # flow cytometry data from Costea et al.
-write.csv(costea2017_mock_composition,
-          "costea2017_mock_composition.csv")
-# load("costea2017_sample_data.rda") # sample metadata
-write.csv(costea2017_sample_data,
-          "costea2017_sample_data.csv")
+# read in metaphlan2 profiles from McLaren et al.
+costea2017_metaphlan2_profiles <-
+  read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Thursday-afternoon/labs/tinyvamp/costea2017_metaphlan2_profiles.csv")
+
+# read in flow cytometry data from Costea et al.
+costea2017_mock_composition <-
+  read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Thursday-afternoon/labs/tinyvamp/costea2017_mock_composition.csv")
+# read in sample metadata
+costea2017_sample_data <-
+  read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Thursday-afternoon/labs/tinyvamp/costea2017_sample_data.csv")
+
+
 
 ### Let's take a look at 'costea2017_metaphlan2_profiles'
 head(costea2017_metaphlan2_profiles)
