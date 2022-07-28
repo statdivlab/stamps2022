@@ -31,7 +31,6 @@
 ### Let's load libraries we'll need
 
 library(tidyverse)
-library(magrittr)
 
 # Because we're working on the RStudio Server, we already have `tinyvamp` installed. However,
 # if you're working at home, uncomment the follow lines and run them in your console (not in
@@ -46,29 +45,19 @@ library(magrittr)
 
 library(tinyvamp)
 
-#download the data we need
-# download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_metaphlan2_profiles.rda",
-#               "costea2017_metaphlan2_profiles.rda")
-# download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_mock_composition.rda",
-#               "costea2017_mock_composition.rda")
-# download.file("https://github.com/statdivlab/stamps2022/blob/main/Thursday-afternoon/labs/tinyvamp/costea2017_sample_data.rda",
-#               "costea2017_sample_data.rda")
-#
 # ### And load data as well
-load("costea2017_metaphlan2_profiles.rda") # MetaPhlan2 profiles produced by
-#                                            # McLaren et al. (2019) from
-#                                            # Costea et al. (2017) raw read data
-#
-write.csv(costea2017_metaphlan2_profiles,
-          "costea2017_metaphlan2_profiles.csv")
-#
-#
-# load("costea2017_mock_composition.rda") # flow cytometry data from Costea et al.
-write.csv(costea2017_mock_composition,
-          "costea2017_mock_composition.csv")
-# load("costea2017_sample_data.rda") # sample metadata
-write.csv(costea2017_sample_data,
-          "costea2017_sample_data.csv")
+# read in metaphlan2 profiles from McLaren et al.
+costea2017_metaphlan2_profiles <-
+  read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Thursday-afternoon/labs/tinyvamp/costea2017_metaphlan2_profiles.csv")
+
+# read in flow cytometry data from Costea et al.
+costea2017_mock_composition <-
+  read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Thursday-afternoon/labs/tinyvamp/costea2017_mock_composition.csv")
+# read in sample metadata
+costea2017_sample_data <-
+  read_csv("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Thursday-afternoon/labs/tinyvamp/costea2017_sample_data.csv")
+
+
 
 ### Let's take a look at 'costea2017_metaphlan2_profiles'
 head(costea2017_metaphlan2_profiles)
@@ -112,7 +101,7 @@ head(costea2017_mock_composition)
 ### only flow cytometry measurements
 mock_cols <- costea2017_mock_composition$Taxon
 
-mock_mat <- t(as.matrix(costea2017_mock_composition[,-1]))
+mock_mat <- t(as.matrix(costea2017_mock_composition[,-c(1:2)]))
 colnames(mock_mat) <- mock_cols
 
 ### tinyvamp is expecting an observation matrix whose rows are samples
@@ -141,7 +130,7 @@ W_reorder <- sapply(colnames(W), # if you're wondering if there's a simpler way
 
 # and now we'll add that output to W
 W <- rbind(W,
-           costea2017_metaphlan2_profiles_species[W_reorder,-1] %>%
+           costea2017_metaphlan2_profiles_species[W_reorder,-c(1:2)] %>%
              as.matrix() %>%
              t)
 
@@ -273,7 +262,8 @@ measurements_for_bias_figure %>%
   scale_y_log10() +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ylab("Within-protocol Technical Variation")
+  ylab("Within-protocol Variance of Estimated Relative Abundances") +
+  xlab("Species")
 
 # ~~~~****Technical variation is pretty low!****~~~~
 
@@ -467,11 +457,11 @@ full_model  <- estimate_parameters(W = W,
                       max_barrier = 1e12, #maximum value of barrier_t
                       initial_conv_tol = 1000,
                       final_conv_tol = 0.1,
-                      final_f = 1e-6,
+                      # final_f = 1e-6,
                       constraint_tolerance = 1e-10,
                       hessian_regularization = 0.01,
                       criterion = "Poisson",
-                      subproblem_method = "Newton",
+                      # subproblem_method = "Newton",
                       profile_P = FALSE,
                       profiling_maxit = 25,
                       wts = NULL,
@@ -563,11 +553,11 @@ for(whichfoldout in 1:10){
                         max_barrier = 1e12, #maximum value of barrier_t
                         initial_conv_tol = 1000,
                         final_conv_tol = 0.1,
-                        final_f = 1e-6,
+                        # final_f = 1e-6,
                         constraint_tolerance = 1e-10,
                         hessian_regularization = 0.01,
                         criterion = "Poisson",
-                        subproblem_method = "Newton",
+                        # subproblem_method = "Newton",
                         profile_P = FALSE,
                         profiling_maxit = 25,
                         wts = NULL,
