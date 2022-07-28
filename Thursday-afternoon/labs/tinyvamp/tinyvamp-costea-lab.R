@@ -16,7 +16,7 @@
 ### flow cytometry measurements taken on each of the bacterial isolates
 ### combined to create this mock community. Our focus in this lab is how
 ### shotgun-sequencing-based estimates of relative abundance within this
-### mock community compare to (presumably more accurate) estimates based on
+### mock community compare to estimates based on
 ### flow cytometry.
 
 # [1] Costea, Paul I., et al.
