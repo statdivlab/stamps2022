@@ -1,18 +1,22 @@
+## happi lab - STAMPS 2022 
+## David Clausen, Sarah Teichman, Amy Willis
+## Thursday 28 July 2022
+
 ### This lab examines a sequencing experiment performed by Costea et al.
 ### (2017) [1] and subsequently analyzed by McLaren et al. (2019) [2]. Briefly,
 ### the data we'll look at in this lab consists of output
 ### from shotgun sequencing of fecal specimens collected from 10 unique
-### study participants. Each specimen was split into three samples
-### which were sequenced according to one of three protocols (labeled
+### study participants. Each specimen was split into three samples.
+### The samples were sequenced according to one of three protocols (labeled
 ### H,Q, and W).
 
 ### Before each sample was sequenced, a mock
-### community containing 10 bacterial species was spiked into it.
+### community containing 10 bacterial species (non-fecal species) was spiked into it.
 ### In addition to sequencing data, Costea et al. (2017) published
 ### flow cytometry measurements taken on each of the bacterial isolates
 ### combined to create this mock community. Our focus in this lab is how
 ### shotgun-sequencing-based estimates of relative abundance within this
-### mock community compare to (presumably more accurate) estimates based on
+### mock community compare to estimates based on
 ### flow cytometry.
 
 # [1] Costea, Paul I., et al.
@@ -37,7 +41,7 @@ library(tidyverse)
 #  install.packages("remotes") # check that remotes is installed
 
 # Install tinyvamp using remotes and build vignettes:
-#remotes::install_github("https://github.com/statdivlab/tinyvamp")
+# remotes::install_github("https://github.com/statdivlab/tinyvamp")
 
 library(tinyvamp)
 
@@ -64,29 +68,15 @@ head(costea2017_metaphlan2_profiles$Clade)
 ### so let's...
 
 ################# Filter data (species level, mock taxa only) ##################
+# first let's store the names of taxa in the spike-in mock
+mock_taxa <- costea2017_mock_composition$Taxon
+
+# now we'll filter out observations that 1) aren't for those taxa or
+# 2) aren't at species level
 costea2017_metaphlan2_profiles_species <- costea2017_metaphlan2_profiles %>%
-  filter(sapply(Clade,function(x) ##filter rows by
-    grepl("s__",x,fixed = TRUE) ##seeing which ones contain "s__" for "species"
-                                ##and keeping only those rows
-    )) %>%
-  filter(sapply(Clade, function(x) ##further filter rows by
-    !grepl("t__",x,fixed = TRUE) ##seeing whcih ones contain "t__" for "strain"
-                                 ##and throwing those out (we want species
-                                 ##level resolution)
-    )) %>%
-  filter(sapply(Clade,function(x) ###filter a final time to limit ourselves
-                                  ###to species known to be in our mock
-    grepl("saccharolyticum",x,fixed = TRUE) | #the vertical bar "|" means "or"
-      grepl("perfringens",x,fixed = TRUE) |
-      grepl("melaninogenica",x,fixed = TRUE)|
-      grepl("difficile",x,fixed = TRUE)|
-      grepl("enterica",x,fixed = TRUE)|
-      grepl("plantarum",x,fixed = TRUE)|
-      grepl("cholerae",x,fixed = TRUE)|
-      grepl("pseudotuberculosis",x,fixed = TRUE)|
-      grepl("Blautia_hansenii",x,fixed = TRUE)|
-      grepl("nucleatum",x,fixed = TRUE)
-  ))
+  filter(!str_detect(Clade, "t__")) %>%
+  filter(str_detect(Clade, paste(mock_taxa, collapse="|"))) %>%
+  mutate(Clade = str_remove(Clade, ".*s__"))
 
 ### now let's take a look at "costea2017_mock_composition"
 ### which contains flow cytometry on isolates used to
@@ -131,76 +121,91 @@ W <- rbind(W,
              t)
 
 
-# now we pull out protocol information
-protocols <- sapply(rownames(W)[-1],
-                    function(x) costea2017_sample_data$Protocol[
-                      costea2017_sample_data$Run_accession == x
-                    ])
-# how many protocols are there?
-unique(protocols)
+# now we organize sequencing protocol information
+protocol_df <- W %>%
+  as_tibble(rownames="Run_accession") %>%
+  full_join(costea2017_sample_data) %>%
+  select(Run_accession, Protocol)
 
-# a little bit more housekeeping:
+protocol_df
+
+#give "Run_accession" column for the flow cytometry measurements value
+# "Flow Cytometry" and also call  the corresponding protocol "Flow Cytometry"
+
+protocol_df$Run_accession[1] <- "Flow Cytometry"
+protocol_df$Protocol[1] <- "Flow Cytometry"
+#make sure first row of W (contains flow cytometry measurements)
+#is named in the same way
 rownames(W)[1] <- "Flow Cytometry"
-protocols <- c("Flow Cytometry",protocols)
-names(protocols)[1] <- "Flow Cytometry"
 
-# let's turn the names of protocols into a column called "sample
-protocols <- as.data.frame(protocols) %>%
-  rownames_to_column(var = "sample")
+# how many protocols are there?
+unique(protocol_df$Protocol)
 
-# and create a vector telling us which person each sample came from
-# (we are looking only at reads mapped to a spike-in mock community)
-individuals <- sapply(rownames(W)[-1],
-                      function(x) costea2017_sample_data$Individual[
-                        costea2017_sample_data$Run_accession == x
-                      ])
+# we're about to inner_join with costea2017_sample_data,
+# but we'll lose our flow cytometry measurements if we don't
+# add a row to this tibble corresponding to these measurements
+costea2017_sample_data <-
+  rbind(tibble("...1" = 0,
+               "Sample" = "Flow Cytometry",
+               "Protocol" = "Flow Cytometry",
+               "Individual" = "none",
+               "SI_sample" = "irrelevant",
+               "Run_accession" = "Flow Cytometry"),
+        costea2017_sample_data)
+
+#and inner_join to relate samples to the study participants ("Individual" column)
+#who provided them
+protocol_df <-
+  protocol_df %>%
+  inner_join(costea2017_sample_data)
+
 # and put these things together in a dataframe called "measurements with metadata"
 measurements_with_metadata <- W %>%
   as.data.frame() %>%
-  rownames_to_column(var = "sample") %>%
-  pivot_longer(-sample) %>%
-  group_by(sample) %>%
-  inner_join(x = ., protocols,by= "sample")
+  rownames_to_column(var = "Run_accession") %>%
+  pivot_longer(-Run_accession) %>%
+  group_by(Run_accession) %>%
+  inner_join(x = ., protocol_df)
 
 ### Let's see how empirical proportions from metaPhlan2 compare to
 ### flow cytometry measurements
 measurements_with_metadata %>%
-  group_by(sample) %>%
+  group_by(Run_accession) %>%
   mutate(empirical_proportion = value/sum(value)) %>%
   ungroup %>%
   ggplot() +
-  geom_bar(aes(x = sample, y = empirical_proportion,
-                group = sample, fill = name),
+  geom_bar(aes(x = Run_accession, y = empirical_proportion,
+                group = Run_accession, fill = name),
            position="stack", stat="identity") +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  facet_grid(~protocols, scales = "free_x") +
+  facet_grid(~Protocol, scales = "free_x") +
   scale_fill_viridis_d() +
   ylab("Empirical Proportion") +
   xlab("Sample") +
   labs(fill = "Species")
 
 ### What seems to be over-represented? Under-represented?
+### A tide pod for whoever can tell us first!
 
 ### Another view of this
 measurements_with_metadata %>%
   mutate(flow_cytometry = measurements_with_metadata$value[
-    measurements_with_metadata$protocols=="Flow Cytometry"
+    measurements_with_metadata$Protocol=="Flow Cytometry"
   ]) %>%
   mutate(flow_cytometry = flow_cytometry/sum(flow_cytometry)) %>%
-  filter(protocols != "Flow Cytometry") %>%
-  mutate(Protocol = protocols) %>%
-  group_by(sample) %>%
+  filter(Protocol != "Flow Cytometry") %>%
+  group_by(Run_accession) %>%
   mutate(empirical_proportion = value/sum(value)) %>%
   ungroup %>%
   ggplot() +
   geom_line(aes(x = name, y = empirical_proportion,
-                group = sample, color = Protocol)) +
+                group = Run_accession, color = Protocol)) +
   geom_line(aes(x = name, y = flow_cytometry,
-                group = sample),linetype = 2) +
+                group = Run_accession),linetype = 2) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  facet_grid(protocols~.) +
+  facet_grid(Protocol~.) +
   ylab("Empirical Relative Abundances \n(Flow Cytometry Shown as Dotted Line)") +
   xlab("Species") +
   scale_y_log10()
@@ -213,7 +218,7 @@ measurements_with_metadata %>%
 ### Note that each protocol gives fairly consistent results on
 ### this mock community -- within-protocol technical variation
 ### is low! But none of them accurately reflect our flow cytometry
-### data (which we are taking as a standard)
+### data, which we are taking as a standard.
 
 ### A brief digression... let's talk a bit about bias and variance.
 ### This is on the relative abundance scale -- scale *really* matters when we're
@@ -224,41 +229,42 @@ measurements_with_metadata %>%
 ### Calculate and store empirical proportions
 measurements_for_bias_figure <-
   measurements_with_metadata %>%
-  group_by(sample) %>%
+  mutate(flow_cytometry = measurements_with_metadata$value[
+    measurements_with_metadata$Protocol=="Flow Cytometry"
+  ]) %>%
+  group_by(Run_accession) %>%
   mutate(empirical_proportion = value/sum(value)) %>%
   ungroup
 
-### Add column containing flow cytometry measurements
-measurements_for_bias_figure$fc_measurement <-
-  sapply(measurements_for_bias_figure$name,
-         function(x) measurements_for_bias_figure$empirical_proportion[
-           measurements_for_bias_figure$name == x &
-             measurements_for_bias_figure$protocols == "Flow Cytometry"
-         ])
+### Transform flow_cytometry column to relative abundance scale
+measurements_for_bias_figure <-
+  measurements_for_bias_figure %>%
+  group_by(Run_accession) %>%
+  mutate(flow_cytometry = flow_cytometry/sum(flow_cytometry))
 
 
 ### Now let's just look at within-protocol technical variation at
 ### the relative abundance / empirical proportion scale:
 measurements_for_bias_figure %>%
-  filter(protocols !="Flow Cytometry") %>% #we're comparing shotgun sequencing
+  filter(Protocol !="Flow Cytometry") %>% #we're comparing shotgun sequencing
                                            #protocols to flow cytometry,
                                            #so cut out flow cytometry rows
                                            #(we added flow cytometry data as
                                            #a column in this tibble)
-  group_by(protocols,name) %>%
+  group_by(Protocol,name) %>%
   summarize(within_protocol_variance = var(empirical_proportion),
             bias_in_rel_abundance_estimator = mean(empirical_proportion) -
-              fc_measurement,
-            fc_measurement = fc_measurement) %>%
-  mutate(relative_bias = bias_in_rel_abundance_estimator/fc_measurement) %>%
+              flow_cytometry,
+            flow_cytometry = flow_cytometry) %>%
+  mutate(relative_bias = bias_in_rel_abundance_estimator/flow_cytometry) %>%
   ggplot() +
   geom_line(aes(x = name, y = within_protocol_variance,
-                group = protocols,
-                color= protocols)) +
+                group = Protocol,
+                color= Protocol)) +
   scale_y_log10() +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ylab("Within-protocol Variance of Estimated Relative Abundances") +
+  ylab("Within-protocol Variance of\nEstimated Relative Abundances") +
   xlab("Species")
 
 # ~~~~****Technical variation is pretty low!****~~~~
@@ -266,21 +272,21 @@ measurements_for_bias_figure %>%
 #How does bias look for empirical proportions (relative to flow cytometry)?
 
 measurements_for_bias_figure %>%
-  filter(protocols !="Flow Cytometry") %>% #we're comparing shotgun sequencing
+  filter(Protocol !="Flow Cytometry") %>% #we're comparing shotgun sequencing
   #protocols to flow cytometry,
   #so cut out flow cytometry rows
   #(we added flow cytometry data as
   #a column in this tibble)
-  group_by(protocols,name) %>%
+  group_by(Protocol,name) %>%
   summarize(within_protocol_variance = var(empirical_proportion),
             bias_in_rel_abundance_estimator = mean(empirical_proportion) -
-              fc_measurement,
-            fc_measurement = fc_measurement) %>%
-  mutate(relative_bias = bias_in_rel_abundance_estimator/fc_measurement) %>%
+              flow_cytometry,
+            flow_cytometry = flow_cytometry) %>%
+  mutate(relative_bias = bias_in_rel_abundance_estimator/flow_cytometry) %>%
   ggplot() +
   geom_line(aes(x = name, y =  bias_in_rel_abundance_estimator,
-                group = protocols,
-                color= protocols)) +
+                group = Protocol,
+                color= Protocol)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ylab("Empirical Bias")
@@ -292,21 +298,21 @@ measurements_for_bias_figure %>%
 #how large is bias as a proportion of the "true"/flow-cytometry value
 
 measurements_for_bias_figure %>%
-  filter(protocols !="Flow Cytometry") %>% #we're comparing shotgun sequencing
+  filter(Protocol !="Flow Cytometry") %>% #we're comparing shotgun sequencing
   #protocols to flow cytometry,
   #so cut out flow cytometry rows
   #(we added flow cytometry data as
   #a column in this tibble)
-  group_by(protocols,name) %>%
+  group_by(Protocol,name) %>%
   summarize(within_protocol_variance = var(empirical_proportion),
             bias_in_rel_abundance_estimator = mean(empirical_proportion) -
-              fc_measurement,
-            fc_measurement = fc_measurement) %>%
-  mutate(relative_bias = bias_in_rel_abundance_estimator/fc_measurement) %>%
+              flow_cytometry,
+            flow_cytometry = flow_cytometry) %>%
+  mutate(relative_bias = bias_in_rel_abundance_estimator/flow_cytometry) %>%
   ggplot() +
   geom_line(aes(x = name, y =  relative_bias,
-                group = protocols,
-                color= protocols)) +
+                group = Protocol,
+                color= Protocol)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ylab("Empirical Relative Bias")
@@ -318,14 +324,14 @@ measurements_for_bias_figure %>%
 #to flow cytometry measurements to get another quantification of how far
 #we're off by
 measurements_for_bias_figure %>%
-  filter(protocols !="Flow Cytometry") %>%
+  filter(Protocol !="Flow Cytometry") %>%
   ggplot() +
-  geom_line(aes(x = name, y =  empirical_proportion/fc_measurement,
-                group = interaction(protocols,sample),
-                color= protocols)) +
+  geom_line(aes(x = name, y =  empirical_proportion/flow_cytometry,
+                group = Run_accession,
+                color= Protocol)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ylab("Ratio: metaPhlan2 proportions over flow cytometry proportions") +
+  ylab("Ratio: metaPhlan2 proportions\nover flow cytometry proportions") +
   geom_abline(aes(slope = 0, intercept = 0),
               linetype = 2) +
   scale_y_log10()
@@ -339,9 +345,9 @@ measurements_for_bias_figure %>%
 
 
 ### Using tinyvamp to estimate "catchability" across taxa and protocols
-# I'm going to assert without a huge amount of proof that the phenomenon
-# we are observing in the Costea data above is differing levels of "catchability"
-# in differing taxa -- i.e., that under each protocol, some microbes are easier
+
+# We can think of this phenomenon as differing levels of "catchability"
+# of taxa for different protocols -- i.e., that under each protocol, some microbes are easier
 # to detect than others. This results in multiplicative over- and under-detection
 # of differing taxa under each protocol. We'll refer to this over/under-detection
 # as a "detection effect."
@@ -355,8 +361,8 @@ measurements_for_bias_figure %>%
 
 # First we'll create a matrix telling tinyvamp what detection effects to estimate
 
-X <- model.matrix(~-1 + protocols,
-             data = protocols)
+X <- model.matrix(~-1 + Protocol,
+             data = protocol_df)
 head(X)
 # We're going to use flow cytometry data as a standard, so we *don't* want
 # to estimate an effect for it. To accomplish this, we'll remove the first
@@ -474,19 +480,16 @@ colnames(full_model$B) <- colnames(W) #label effects by taxon
 
 # Now we can exponentiate B to get more interpretable results:
 round(exp(full_model$B),2)
-# We interpret the estimate for B. hansenii to indicate that
+# We interpret the estimate for B. hansenii (of 0.2) to indicate that
 # under protocol H, if we sequence a specimen consisting of equal
 # parts Y. pseudotuberculosis and B. hansenii (as measured by flow cytometry),
 # we will on average
-# observe 0.2 B. hansenii reads for each Y. pseudotuberculosis read
-# (or, more or less equivalently, we can say that the ratio of 1) the MetaPhlan2
-# estimate of relative abundance in B. hansenii to 2) the estimate of
-# relative abundance in Y. pseudotuberculosis will on average be
-# 1/5 as large as the ratio of true relative abundances)
+# observe 0.20 B. hansenii reads for each Y. pseudotuberculosis read
 
 # On the other hand, we estimate that under protocol H, we will observe
-# about 65 P melanogenica reads for each Y. pseudotuberculosis read
+# about 65 P. melanogenica reads for each Y. pseudotuberculosis read
 # if we sequence an even mixture of these two species
+
 # Does this align with what you see in the plots we produced earlier in
 # this lab?
 
@@ -494,8 +497,14 @@ round(exp(full_model$B),2)
 # Does estimating these detection effects help us estimate relative abundances?
 # Briefly, yes, but we can examine this with a cross-validation. Specifically,
 # we conduct a 10-fold cross-validation, and for each fold we hold out all
-# samples from a single participant's specimen. We fit our model on the
+# samples from a single participant's specimen.* We fit our model on the
 # remainder of the samples and predict on the held-out samples.
+
+#*strictly, this is for the first 8 folds. Then we have a fold consisting of
+#measurements on a pure mock sample as the 9th fold and a 10th fold consisting of
+#measurements on samples "A" and "B" (human fecal samples that were sequenced
+#only under protocol Q).
+#)
 
 # We'll do the cross-validation now:
 # construct folds
@@ -504,10 +513,10 @@ available <- 2:30
 unique_individuals <- c(1:8,"M")
 
 for(i in 1:9){
-  folds[[i]] <- which(individuals == unique_individuals[i]) +1
+  folds[[i]] <- which(protocol_df$Individual == unique_individuals[i]) +1
 }
 
-folds[[10]] <- which(individuals %in% c("A","B")) +1
+folds[[10]] <- which(protocol_df$Individual %in% c("A","B")) +1
 
 full_cv <- vector(10, mode = "list")
 for(whichfoldout in 1:10){
@@ -581,13 +590,13 @@ full_cv_predictions$fc_value <- sapply(full_cv_predictions$j,
                                        function(d) fc_values[d])
 full_cv_predictions$protocol <-
   sapply(full_cv_predictions$k,
-         function(d) protocols$protocols[d-1]) #  d - 1 bc k starts at 2
+         function(d) protocol_df$Protocol[d-1]) #  d - 1 bc k starts at 2
 #  (k = 1 is fc data)
 
 # label predictions by specimen predicted on
 full_cv_predictions$specimen <-
   sapply(full_cv_predictions$k,
-         function(d) individuals[d - 1]) #  d - 1 bc k starts at 2
+         function(d) protocol_df$Individual[d - 1]) #  d - 1 bc k starts at 2
 #  (k = 1 is fc data)
 
 # label these predictions as being from tinyvamp
@@ -604,8 +613,8 @@ for(i in 1:nrow(W_prop)){
 naive_predictions <- full_cv_predictions[numeric(0),]
 
 for(i in 1:nrow(W_prop)){
-  protocol <- protocols$protocols[i]
-  specimen <- individuals[i]
+  protocol <- protocol_df$Protocol[i]
+  specimen <- protocol_df$Individual[i]
   for(j in 1:ncol(W)){
     naive_predictions <- rbind(naive_predictions,
                                data.frame(value = W_prop[i,j],
@@ -655,3 +664,53 @@ rbind(full_cv_predictions,
 # and variance of plug-in relative abundance based on measurements taken
 # according to them? How reliable are the plug-in estimates of relative
 # abundance?
+
+##### Thoughts about experimental design, analysis, and interpretation #####
+
+# In general, it's risky territory to interpret read proportions / metaphlan
+# output / etc. as if they were true relative abundances (or even close to true)
+# in a sequenced sample. We only looked at one community (a mock) in this lab,
+# but it's worth considering as you look at read proportions from an experiment
+# that
+      # ***detection effects impact plug-in relative abundance
+      # estimates in different communities differently!***
+# (For example, consider we sequence two samples, an even mixture of
+# species A and B and an even mixture of species A and C. What happens to
+# plug-in relative abundances estimates of species A if species B is much
+# easier to detect than species C?)
+
+# As a result, any analysis that relies on observed read proportions to be
+# similar to true relative abundance profiles may be misleading... but it's
+# hard to predict exactly when this will happen. Very large differences between
+# communities will likely still be visible... but detection effects can also
+# produce spurious differences between communities, so again care is
+# warranted.
+
+# If you are able to sequence positive controls with your biological samples,
+# this is always a good idea. Better yet if you have the wherewithal to
+# include mocks containing taxa you are particularly interested in
+# characterizing in your samples of interest.
+
+# In a similar vein, since detection effects can vary from batch to batch,
+# if you have to sequence samples in multiple batches,
+# it's generally best to make sure each batch contains a similar
+# array of samples (so don't, for example, sequence all samples from
+# one environment in batch A and all samples from another in batch B).
+# But!! This doesn't guarantee that comparisons of observed relative abundances
+# won't be misleading.
+
+# As well, some analytical methods are more robust to detection effects
+# than others. In general, "compositional data" (a misnomer imho, but I
+# digress) methods are fairly robust to detection effects. At the same time,
+# these methods generally make fairly restrictive assumptions on taxon
+# presence (usually all taxa are assumed to be truly present in every sample,
+# which may not be realistic in a variety of settings --
+# in other cases, such as ancomII, it is assumed that we can identify which
+# taxa are present in which sample... which also strikes me as a dubious
+# proposition). radEmu was specifically designed to be robust to detection
+# effects and does not assume all taxa are present in every sample... so yeah.
+# With all of this said, none of these methods have been demonstrated to be
+# robust to measurement error that includes detection effects *and* other
+# types of error (like contamination or misclassification of taxa), so
+# it is in general important to consider how measurement error might impact
+# results of a microbiome data analysis.
