@@ -39,7 +39,7 @@ library(plotly)
 
 # only run this command once in the console if `ggtree` is not yet installed
 #library(BiocManager)
-#BiocManager::install("ggtree")
+# BiocManager::install("ggtree")
 library(ggtree)
 
 # Because we're working on the RStudio Server, we already have `grove` installed. 
@@ -48,7 +48,7 @@ library(ggtree)
 # check that remotes is installed
 #  install.packages("remotes") 
 #}
-#remotes::install_github("statdivlab/grove")
+# remotes::install_github("statdivlab/grove")
 library(grove)
 
 # We'll start with the output from GToTree, which includes a 
@@ -87,9 +87,9 @@ library(grove)
 # folder in your current working directly that has txt files will all of our 
 # trees. 
 
-#download.file("https://github.com/statdivlab/stamps2022/raw/main/Friday-morning/labs/gene_tree_lab/data/trees_txt.zip", 
-#"trees_txt.zip")
-#unzip("trees_txt.zip")
+# download.file("https://github.com/statdivlab/stamps2022/raw/main/Friday-morning/labs/gene_tree_lab/data/trees_txt.zip",
+# "trees_txt.zip")
+# unzip("trees_txt.zip")
 
 # Phylogenomic trees
 
@@ -142,7 +142,7 @@ ggtree(gene_trees[[1]]) +
 gene_names <- as.character(read.delim("https://raw.githubusercontent.com/statdivlab/stamps2022/main/Friday-morning/labs/gene_tree_lab/data/gene_names.txt", 
                                       header = FALSE)$V1)
 
-# -------------------- Building ordination plot ---------------------------------
+# -------------------- Building our visualization ---------------------------------
 
 # First we need a vector that contains the pathways to each of our individual
 # gene trees. We'll use the function paste0, which combines two strings together
@@ -158,7 +158,7 @@ pathways <- paste0("trees_txt/", gene_names, ".txt")
 # and we use the phylogenomic tree as the base.
 vectors <- compute_logmap(cons_path = "trees_txt/phy_genom.txt", 
                           # a vector of paths to all gene trees we want to study
-                          tree_paths = new_paths,
+                          tree_paths = pathways,
                           # this lets us consider the lengths of branches to the 
                           # tips, by default these are not considered but we like
                           # to consider them because the amount of evolution from
@@ -216,6 +216,8 @@ lm_res$plot
 
 ggplotly(lm_res$plot, tooltip = "name")
 
+# Give it a try! You should be able to place your mouse/cursor over the points 
+# and see the names of the genes! 
 # By mousing over our plot, we can see that the two potential outliers in the 
 # first principal component are GTP_cyclohydroI and DMRL_synthase, and the potential
 # outlier in the second principal component is BacA. 
@@ -226,7 +228,7 @@ ggplotly(lm_res$plot, tooltip = "name")
 # to investigate. Let's start with GTP_cyclohydroI and DMRL_synthase. 
 
 # First we need to figure out which trees in our `gene_trees` object correspond
-# with these genes. We'll use the function which to give us the indices. 
+# with these genes. We'll use the function `which` to give us the indices. 
 
 which(gene_names == "GTP_cyclohydroI")
 which(gene_names == "DMRL_synthase")
