@@ -402,7 +402,7 @@ ggplot(soil_df, aes(x = seq_depth, y = `MVP-21`, col = soil_add)) +
 # that epsilon = 0 there is no probability of observing a taxon when it is not actually there.
 # However, when we set epsilon = 0.05, we say that there is a 5% probability of observing a 
 # taxon given that it shouldn't be present. When we allow for this non-zero probability of 
-# falsing observing a taxon, our p-value for the relationship between soil amendments and 
+# falsly observing a taxon, our p-value for the relationship between soil amendments and 
 # the presence of MVP-21 increases because we are accounting for the possibility of erroneously
 # observing MVP-21 in the 4 samples that we observed them in. 
   
