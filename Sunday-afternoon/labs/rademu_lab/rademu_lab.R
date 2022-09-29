@@ -254,8 +254,6 @@ ch_fit <-
          
          constraint_fn = constraint_fn, #make sure radEmu is using our
          #constraint function
-         optim_only = TRUE, # you can ignore the rest of these arguments
-         # for now
          tolerance = 1,
          method = "FL",
          verbose= TRUE,
@@ -271,7 +269,6 @@ ch_fit_cis <- emuCI(emuMod = ch_fit, #we have to give emuCI a fitted
                     # more bootstrap iterations (1000 is great)
                     parallel = TRUE, # speed up by
                     # doing bootstrap fits in parallel?
-                    seed = 0, #set seed for reproducibility
                     ncore = 6) #how many cores to parallelize over?
 
 ### Ok we have estimates and confidence intervals for the group effect
@@ -341,6 +338,8 @@ ch_fit_cis%>%
     
   )
 
+# hint: use the Zoom button above the plot to pop it out into a larger window
+
 # ok now that (hopefully) the plot is easier to read...
 # what patterns do you see across mOTUs?
 
@@ -355,7 +354,6 @@ fr_fit <-
   emuFit(~ Group,
          covariate_data = metadata[fr_study_obs,],
          Y = mOTU_table[fr_study_obs,which_mOTU_names],
-         optim_only = TRUE,
          tolerance = 1,
          constraint_fn = constraint_fn,
          method = "FL", # use Firth-penalized likelihood
@@ -367,7 +365,6 @@ fr_fit <-
 fr_fit_cis <- emuCI(emuMod = fr_fit,
                     nboot = 100,
                     parallel = TRUE,
-                    seed = 0,
                     ncore = 6)
 
 fr_fit_cis%>%
@@ -474,7 +471,6 @@ ch_fit_timing <-
   emuFit(~ Group + Sampling_rel_to_colonoscopy,
          covariate_data = metadata[ch_study_obs,],
          Y = mOTU_table[ch_study_obs,which_mOTU_names],
-         optim_only = TRUE,
          tolerance = 1,
          constraint_fn = constraint_fn,
          method = "FL", # use Firth-penalized likelihood
@@ -525,17 +521,16 @@ ch_fit_timing <-
                                                        # mOTU_table...
                                                        # I write the most elegant code
          ],
-         optim_only = TRUE,
          tolerance = 1,
          constraint_fn = constraint_fn,
          method = "FL",
          verbose= TRUE,
          reweight = TRUE)
 
+# this may take several minutes
 chi_fit_timing_cis <- emuCI(emuMod = ch_fit_timing,
                             nboot = 100,
                             parallel = TRUE,
-                            seed = 0,
                             ncore = 6)
 
 ### Let's plot the timing-adjusted and unadjusted fits together
@@ -584,7 +579,6 @@ fr_ch_fit <-
   emuFit(~ Group + Country,
          covariate_data = metadata[fr_ch_study_obs,],
          Y = mOTU_table[fr_ch_study_obs,which_mOTU_names],
-         optim_only = TRUE,
          tolerance = 1,
          constraint_fn = constraint_fn,
          method = "FL", # use Firth-penalized likelihood
@@ -596,11 +590,10 @@ fr_ch_fit <-
 fr_ch_fit_cis <- emuCI(emuMod = fr_ch_fit,
                        nboot = 100,
                        parallel = TRUE,
-                       seed = 0,
                        ncore = 6)
 
 ## Let's look at results
-fr_ch_fit_cis%>%
+fr_ch_fit_cis %>%
   filter(row ==2) %>%
   mutate(taxon = factor(restricted_mOTU_names,
                         levels = mOTU_names[c(

@@ -22,6 +22,7 @@
 
 # RStudio files
 .Rproj.user/
+stamps2022.Rproj
 
 # produced vignettes
 vignettes/*.html
